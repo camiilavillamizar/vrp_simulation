@@ -1,0 +1,1 @@
+// Structure, creation and functions of the map
