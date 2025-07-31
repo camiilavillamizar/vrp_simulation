@@ -37,5 +37,9 @@ int is_villager_at(int x, int y);
 //Renders all villagers into the map (for visual output only)
 void place_villagers_on_map();
 
+//Get and set villagers positions
+void load_villagers_from_file(const char *filename);
+void save_villagers_to_file(const char *filename);
+
 
 #endif

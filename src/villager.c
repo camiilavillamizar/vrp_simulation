@@ -40,3 +40,42 @@ void initialize_villagers(int town_x, int town_y) {
     create_villager(town_x + 1, town_y - 1);
     create_villager(town_x - 1, town_y + 1);
 }
+
+void save_villagers_to_file(const char *filename) {
+    FILE *f = fopen(filename, "w");
+    if (!f) {
+        perror("Failed to save villagers");
+        return;
+    }
+
+    fprintf(f, "%d\n", villager_count);
+    for (int i = 0; i < villager_count; i++) {
+        Villager v = villagers[i];
+        fprintf(f, "%d %d %d %d %d %d %d %d %d\n",
+                v.id, v.x, v.y, v.carrying_type, v.carrying_amount,
+                v.task, v.target_x, v.target_y, v.ticks_remaining);
+    }
+
+    fclose(f);
+}
+
+void load_villagers_from_file(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        perror("Failed to load villagers");
+        return;
+    }
+
+    fscanf(f, "%d", &villager_count);
+    for (int i = 0; i < villager_count; i++) {
+        Villager v;
+        fscanf(f, "%d %d %d %d %d %d %d %d %d",
+               &v.id, &v.x, &v.y, &v.carrying_type, &v.carrying_amount,
+               &v.task, &v.target_x, &v.target_y, &v.ticks_remaining);
+        villagers[i] = v;
+        set_cell(v.x, v.y, CELL_VILLAGER);  // Mostrar en el mapa
+    }
+
+    fclose(f);
+}
+

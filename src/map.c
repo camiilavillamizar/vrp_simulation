@@ -115,6 +115,8 @@ void save_map_to_file(const char *filename) {
         fprintf(f, "%d %d\n", villagers[i].x, villagers[i].y);
     }
 
+    save_villagers_to_file("output/map/villagers.txt");
+
     fclose(f);
     printf("Map saved to %s\n", filename);
 }
@@ -163,6 +165,8 @@ void load_map_from_file(const char *filename) {
             }
         }
     }
+
+    load_villagers_from_file("output/map/villagers.txt");
     fclose(f);
     printf("Map loaded from %s\n", filename);
 }

@@ -5,8 +5,8 @@
 
 int main() {
     //Generate random map and villagers
-    generate_random_map();
-    //load_map_from_file("output/map/initial_map.txt"); //We can use this when we want to load the map
+    //generate_random_map();
+    load_map_from_file("output/map/initial_map.txt"); //We can use this when we want to load the map
 
     place_villagers_on_map();
 
