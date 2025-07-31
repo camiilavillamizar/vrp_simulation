@@ -35,6 +35,7 @@ int create_villager(int x, int y);
 int is_villager_at(int x, int y);
 
 //Renders all villagers into the map (for visual output only)
-void render_villagers_on_map(int **map);
+void place_villagers_on_map();
+
 
 #endif

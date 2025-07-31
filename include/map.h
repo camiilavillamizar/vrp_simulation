@@ -3,6 +3,8 @@
 #define MAP_H
 
 #include "game_rules.h"  
+#include "map_visuals.h"
+
 
 //Struct to manage the main game map (matrix of cells)
 extern int **game_map;
@@ -21,5 +23,13 @@ int get_cell(int x, int y);
 
 //Prints a small portion of the map 
 void print_map_viewport(int center_x, int center_y, int view_width, int view_height);
+
+//Saves the current map to a text file (e.g., for debugging or reloading)
+void save_map_to_file(const char *filename);
+
+//Loads a map from a file (previously saved with save_map_to_file)
+//The game_map will be replaced with the one from the file
+void load_map_from_file(const char *filename);
+
 
 #endif
