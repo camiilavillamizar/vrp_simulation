@@ -5,9 +5,15 @@
 #include "game_rules.h"  
 #include "map_visuals.h"
 
+typedef struct {
+  int cells[MAP_HEIGHT][MAP_WIDTH];
+  int width;
+  int height;
+} Map;
+
 
 //Struct to manage the main game map (matrix of cells)
-extern int **game_map;
+extern Map game_map;
 
 //Allocates memory and creates the map with random resources and initial layout
 void generate_random_map();

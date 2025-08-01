@@ -1,17 +1,34 @@
-//VRP engine
 #ifndef VRP_H
 #define VRP_H
 
 #include "game_rules.h"
+#include "map.h"
 #include "villager.h"
+#include <mpi.h>
 
-//Trigger the VRP engine to decide what each villager should do next
-void execute_vrp();
+#define STRATEGY_GREEDY_PATH           0
+#define STRATEGY_MAX_PROFIT            1
+#define STRATEGY_STAGE_CONCENTRATION   2
+#define STRATEGY_REGION_SCHEDULING     3
 
-//Returns true if something in the world changed and VRP should be executed
-int should_execute_vrp();
+typedef struct {
+  int total_collected;
+  int total_ticks;
+} StrategyResult;
 
-//Notifies that a state-changing event happened (e.g., new villager, building complete)
-void notify_world_changed();
+typedef struct {
+  int x, y;
+} Position;
+
+typedef struct {
+  Position target;
+  int type; // CELL_WOOD, CELL_GOLD, CELL_FOOD
+} Task;
+
+// Strategy function declarations
+StrategyResult assign_task_greedy(Map *map, Villager *villagers, int num_villagers);
+StrategyResult assign_task_max_profit(Map *map, Villager *villagers, int num_villagers);
+StrategyResult assign_task_stage_based(Map *map, Villager *villagers, int num_villagers);
+StrategyResult assign_task_region_based(Map *map, Villager *villagers, int num_villagers);
 
 #endif

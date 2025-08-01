@@ -1,0 +1,75 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <title>Interactive Map Viewer</title>
+  <style>
+    #mapCanvas {
+      image-rendering: pixelated;
+      border: 2px solid black;
+      cursor: crosshair;
+    }
+    #infoBox {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>VRP Map Viewer</h2>
+  <canvas id="mapCanvas" width="512" height="512"></canvas>
+  <div id="infoBox">Click a cell to see info here</div>
+
+  <script>
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    const mapWidth = 64; // match your MAP_WIDTH
+    const mapHeight = 64;
+    const cellSize = canvas.width / mapWidth;
+
+    // Example load image (or draw map via color codes)
+    const img = new Image();
+    img.src = "output/map/initial_map.png"; // use relative path if needed
+    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    // Load map info JSON
+    let mapData = [];
+
+    fetch("output/map/initial_map.json")
+      .then(res => res.json())
+      .then(data => { mapData = data; });
+
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+      const cell = mapData[y][x];
+      document.getElementById("infoBox").innerText =
+        `Cell (${x}, ${y})\nType: ${cell.type}\nAmount: ${cell.amount}`;
+    });
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+<head><title>Map Viewer</title></head>
+<body>
+  <h2>VRP Simulation Map</h2>
+  <img src="../output/map/initial_map.png" width="800" />
+  <hr>
+  <h3>Legend:</h3>
+  <ul>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#654321;"></span> 🌲 Wood</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#FFD700;"></span> 💰 Gold</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#C00000;"></span> 🍖 Food</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#0000FF;"></span> 📦 Drop-off</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#006400;"></span> 🏠 Town Center</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#FF0000;"></span> 🏴 Enemy Build</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#00FFFF;"></span> 🏛️ Friendly Build</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#AA00FF;"></span> ⛪ Temple</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#505050;"></span> 🛡️ Armory</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#000000;"></span> 🏰 Fortress</li>
+    <li><span style="display:inline-block;width:20px;height:20px;background:#FFFFFF;border:1px solid #000;"></span> ⚡ Titan Gate</li>
+  </ul>
+</body>
+</html>

@@ -1,4 +1,3 @@
-// Structure, creation and functions of the map
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -7,198 +6,263 @@
 #include "game_rules.h"
 #include "villager.h"
 
-//Global pointer to the game map
-int **game_map;
+// Global game map instance
+Map game_map;
 
+/**
+ * Free all memory allocated for the map
+ */
+void free_map() {
+    // if (game_map.cells == NULL) return;
+
+    // Free each row
+    // for (int i = 0; i < game_map.height; i++) {
+    //     free(game_map.cells[i]);
+    // }
+    // Free the row pointers
+    // free(game_map.cells);
+}
+
+/**
+ * Generate a new random map with resources and structures
+ */
 void generate_random_map() {
-
-    //Seed randomness
+    // Initialize random seed
     srand(time(NULL));
+    
+    // Initialize map structure
+    // init_map();
 
-    //Allocate memory for game_map
-    game_map = malloc(MAP_HEIGHT * sizeof(int *));
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        game_map[i] = malloc(MAP_WIDTH * sizeof(int));
-    }
-
-    //Fill map with empty cells
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        for (int j = 0; j < MAP_WIDTH; j++) {
-            game_map[i][j] = CELL_EMPTY;
+    // Fill entire map with empty cells
+    for (int y = 0; y < game_map.height; y++) {
+        for (int x = 0; x < game_map.width; x++) {
+            game_map.cells[y][x] = CELL_EMPTY;
         }
     }
 
-    //=== 1. Place Town Center in top-left corner ===
+    // === 1. Place Town Center in top-left corner ===
     int tc_x = 2;
     int tc_y = 2;
-    game_map[tc_y][tc_x] = CELL_TOWN_CENTER;
+    game_map.cells[tc_y][tc_x] = CELL_TOWN_CENTER;
 
-    //=== 2. Place 3 initial villagers around the town center ===
+    // === 2. Place initial villagers around town center ===
     initialize_villagers(tc_x, tc_y);
 
-    // === 3. Place 4 friendly buildings near the town center ===
-    game_map[tc_y - 1][tc_x] = CELL_FRIENDLY_BLD;  //above
-    game_map[tc_y][tc_x - 1] = CELL_FRIENDLY_BLD;  //left
-    game_map[tc_y - 1][tc_x - 1] = CELL_FRIENDLY_BLD;
-    game_map[tc_y + 2][tc_x] = CELL_FRIENDLY_BLD;
+    // === 3. Place friendly buildings near town center ===
+    game_map.cells[tc_y - 1][tc_x] = CELL_FRIENDLY_BLD;  // Above TC
+    game_map.cells[tc_y][tc_x - 1] = CELL_FRIENDLY_BLD;  // Left of TC
+    game_map.cells[tc_y - 1][tc_x - 1] = CELL_FRIENDLY_BLD;
+    game_map.cells[tc_y + 2][tc_x] = CELL_FRIENDLY_BLD;
 
     // === 4. Place enemy building in opposite corner ===
-    game_map[MAP_HEIGHT - 3][MAP_WIDTH - 3] = CELL_ENEMY_BUILD;
+    game_map.cells[game_map.height - 3][game_map.width - 3] = CELL_ENEMY_BUILD;
 
     // === 5. Place resources randomly ===
-    int num_trees = 1000;
-    int num_mines = 500;
-    int num_food_sources = 600;
+    const int num_trees = 1000;
+    const int num_mines = 500;
+    const int num_food_sources = 600;
 
-    //Trees
+    // Place trees (wood resources)
     for (int i = 0; i < num_trees; i++) {
-        int x = rand() % MAP_WIDTH;
-        int y = rand() % MAP_HEIGHT;
-        if (game_map[y][x] == CELL_EMPTY) {
-            game_map[y][x] = CELL_WOOD;
+        int x = rand() % game_map.width;
+        int y = rand() % game_map.height;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_WOOD;
         }
     }
 
-    //Mines
+    // Place mines (gold resources)
     for (int i = 0; i < num_mines; i++) {
-        int x = rand() % MAP_WIDTH;
-        int y = rand() % MAP_HEIGHT;
-        if (game_map[y][x] == CELL_EMPTY) {
-            game_map[y][x] = CELL_GOLD;
+        int x = rand() % game_map.width;
+        int y = rand() % game_map.height;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_GOLD;
         }
     }
 
-    //Food
+    // Place food sources (berry bushes)
     for (int i = 0; i < num_food_sources; i++) {
-        int x = rand() % MAP_WIDTH;
-        int y = rand() % MAP_HEIGHT;
-        if (game_map[y][x] == CELL_EMPTY) {
-            game_map[y][x] = CELL_FOOD;
+        int x = rand() % game_map.width;
+        int y = rand() % game_map.height;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_FOOD;
         }
     }
 
+    // Save generated map to file
     save_map_to_file("output/map/initial_map.txt");
 }
 
-void free_map() {
-    if (game_map == NULL) return;
-
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        free(game_map[i]);
-    }
-    free(game_map);
-    game_map = NULL;
-}
-
+/**
+ * Save map data to a text file
+ * 
+ * @param filename Path to output file
+ */
 void save_map_to_file(const char *filename) {
-
     FILE *f = fopen(filename, "w");
     if (!f) {
-        perror("Could not open file to save map");
+        perror("Failed to open map file for writing");
         return;
     }
 
-    //First line: size
-    fprintf(f, "%d %d\n", MAP_HEIGHT, MAP_WIDTH);
+    // Write map dimensions
+    fprintf(f, "%d %d\n", game_map.height, game_map.width);
 
-    //Each line: one row of the map
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        for (int j = 0; j < MAP_WIDTH; j++) {
-            fprintf(f, "%d ", game_map[i][j]);
+    // Write cell values
+    for (int y = 0; y < game_map.height; y++) {
+        for (int x = 0; x < game_map.width; x++) {
+            fprintf(f, "%d ", game_map.cells[y][x]);
         }
         fprintf(f, "\n");
     }
 
-    // Save villagers count and their positions
+    // Save villagers information
     fprintf(f, "VILLAGERS %d\n", villager_count);
     for (int i = 0; i < villager_count; i++) {
-        fprintf(f, "%d %d\n", villagers[i].x, villagers[i].y);
+        fprintf(f, "%d %d %d\n", 
+                villagers[i].x, 
+                villagers[i].y,
+                // villagers[i].age,
+                villagers[i].carrying_type);
     }
-
-    save_villagers_to_file("output/map/villagers.txt");
 
     fclose(f);
     printf("Map saved to %s\n", filename);
 }
 
-void load_map_from_file(const char *filename) {
+/**
+ * Load map data from a text file
+ * 
+ * @param filename Path to input file
+ */
+void load_map_from_file(const char *filename)
+{
     FILE *f = fopen(filename, "r");
     if (!f) {
-        perror("Could not open map file for loading");
+        perror("Failed to open map file for reading");
         return;
     }
 
     int height, width;
     if (fscanf(f, "%d %d", &height, &width) != 2) {
-        fprintf(stderr, "Invalid map format\n");
+        fprintf(stderr, "Invalid map file format\n");
         fclose(f);
         return;
     }
 
-    //Safety check
+    // Verify map dimensions
     if (height != MAP_HEIGHT || width != MAP_WIDTH) {
-        fprintf(stderr, "Map size mismatch: expected %dx%d, got %dx%d\n",
+        fprintf(stderr, "Map size mismatch: Expected %dx%d, got %dx%d\n",
                 MAP_HEIGHT, MAP_WIDTH, height, width);
         fclose(f);
         return;
     }
 
-    //Allocate new map
-    game_map = malloc(height * sizeof(int *));
-    for (int i = 0; i < height; i++) {
-        game_map[i] = malloc(width * sizeof(int));
-        for (int j = 0; j < width; j++) {
-            fscanf(f, "%d", &game_map[i][j]);
+    // Initialize map structure
+    // init_map();
+
+    // Read cell values
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            if (fscanf(f, "%d", &game_map.cells[y][x]) != 1) {
+                fprintf(stderr, "Error reading map data\n");
+                fclose(f);
+                free_map();
+                return;
+            }
         }
     }
 
-    char line[256];
-    if (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "VILLAGERS", 9) == 0) {
-            int num;
-            sscanf(line, "VILLAGERS %d", &num);
-            for (int i = 0; i < num; i++) {
-                int x, y;
-                if (fscanf(f, "%d %d", &x, &y) == 2) {
-                    create_villager(x, y);
+    // Read villagers information
+    char buffer[256];
+    if (fgets(buffer, sizeof(buffer), f)) { // Skip newline
+        if (fgets(buffer, sizeof(buffer), f)) {
+            if (strncmp(buffer, "VILLAGERS", 9) == 0) {
+                int num_villagers = 3;
+                // sscanf(buffer, "VILLAGERS %d", &num_villagers);
+                
+                for (int i = 0; i < num_villagers; i++) {
+                    int x, y, carrying_type;
+                    if (fscanf(f, "%d %d %d", &x, &y, &carrying_type) == 4) {
+                        create_villager(x, y);
+                        villagers[i].carrying_type = carrying_type;
+                    }
                 }
             }
         }
     }
 
-    load_villagers_from_file("output/map/villagers.txt");
     fclose(f);
     printf("Map loaded from %s\n", filename);
 }
 
-//Safely retrieves the value of a cell (returns -99 if out of bounds)
+/**
+ * Get cell value at specified coordinates
+ * 
+ * @param x X coordinate (column)
+ * @param y Y coordinate (row)
+ * @return Cell value or CELL_INVALID if out of bounds
+ */
 int get_cell(int x, int y) {
-    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) {
-        return -99;
+    if (x < 0 || x >= game_map.width || y < 0 || y >= game_map.height) {
+        return -1;
     }
-    return game_map[y][x]; // Remember: rows (y) first, then columns (x)
+    return game_map.cells[y][x];
 }
 
-//Safely sets a value on the map (ignores if out of bounds)
+/**
+ * Set cell value at specified coordinates
+ * 
+ * @param x X coordinate (column)
+ * @param y Y coordinate (row)
+ * @param value New cell value
+ */
 void set_cell(int x, int y, int value) {
-    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) {
+    if (x < 0 || x >= game_map.width || y < 0 || y >= game_map.height) {
         return;
     }
-    game_map[y][x] = value;
+    game_map.cells[y][x] = value;
 }
 
+/**
+ * Print a rectangular viewport of the map
+ * 
+ * @param center_x Center X coordinate of viewport
+ * @param center_y Center Y coordinate of viewport
+ * @param view_width Width of viewport to display
+ * @param view_height Height of viewport to display
+ */
 void print_map_viewport(int center_x, int center_y, int view_width, int view_height) {
     int start_x = center_x - view_width / 2;
     int start_y = center_y - view_height / 2;
 
-    printf("\nMap Viewport centered at (%d, %d):\n", center_x, center_y);
+    printf("\nMap Viewport (Center: %d, %d):\n", center_x, center_y);
     for (int y = 0; y < view_height; y++) {
         for (int x = 0; x < view_width; x++) {
             int map_x = start_x + x;
             int map_y = start_y + y;
 
-            int value = get_cell(map_x, map_y);
-            printf("%s ", get_cell_symbol(value));
+            // Handle out-of-bound coordinates
+            if (map_x < 0 || map_x >= game_map.width || 
+                map_y < 0 || map_y >= game_map.height) {
+                printf("# ");
+                continue;
+            }
+
+            // Check for villagers at this position
+            int has_villager = 0;
+            for (int i = 0; i < villager_count; i++) {
+                if (villagers[i].x == map_x && villagers[i].y == map_y) {
+                    printf("V ");
+                    has_villager = 1;
+                    break;
+                }
+            }
+            
+            // Print cell symbol if no villager present
+            if (!has_villager) {
+                printf("%s ", get_cell_symbol(game_map.cells[map_y][map_x]));
+            }
         }
         printf("\n");
     }
