@@ -1,9 +1,9 @@
 # === Configuration ===
 CC = mpicc
-CFLAGS = -Iinclude -Wall
+CFLAGS = -Wall -fopenmp -Iinclude
 SRC = $(wildcard src/*.c)
-OBJ = $(SRC:.c=.o)
 BIN = sim
+OBJ = $(SRC:.c=.o)
 OUTLINE_DIR = output
 
 # === Build Target ===
@@ -19,8 +19,7 @@ clean:
 
 # === Run with MPI ===
 run: $(BIN)
-	mpirun -np 5 ./$(BIN)
-
+	mpirun --allow-run-as-root -np 5 ./$(BIN)
 # === Convert PPM to PNG ===
 convert: $(OUTLINE_DIR)/map/initial_map.ppm
 	magick $(OUTLINE_DIR)/map/initial_map.ppm $(OUTLINE_DIR)/map/initial_map.png
