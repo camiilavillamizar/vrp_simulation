@@ -1,75 +1,135 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <title>Interactive Map Viewer</title>
-  <style>
-    #mapCanvas {
-      image-rendering: pixelated;
-      border: 2px solid black;
-      cursor: crosshair;
-    }
-    #infoBox {
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-  <h2>VRP Map Viewer</h2>
-  <canvas id="mapCanvas" width="512" height="512"></canvas>
-  <div id="infoBox">Click a cell to see info here</div>
-
-  <script>
-    const canvas = document.getElementById("mapCanvas");
-    const ctx = canvas.getContext("2d");
-    const mapWidth = 64; // match your MAP_WIDTH
-    const mapHeight = 64;
-    const cellSize = canvas.width / mapWidth;
-
-    // Example load image (or draw map via color codes)
-    const img = new Image();
-    img.src = "output/map/initial_map.png"; // use relative path if needed
-    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // Load map info JSON
-    let mapData = [];
-
-    fetch("output/map/initial_map.json")
-      .then(res => res.json())
-      .then(data => { mapData = data; });
-
-    canvas.addEventListener("click", (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.floor((e.clientX - rect.left) / cellSize);
-      const y = Math.floor((e.clientY - rect.top) / cellSize);
-
-      const cell = mapData[y][x];
-      document.getElementById("infoBox").innerText =
-        `Cell (${x}, ${y})\nType: ${cell.type}\nAmount: ${cell.amount}`;
-    });
-  </script>
-</body>
-</html> -->
-
 <!DOCTYPE html>
 <html>
-<head><title>Map Viewer</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>Map and Path Emoji Renderer (Full Map)</title>
+    <style>
+        #map-area { font-size: 16px; font-family: monospace; white-space: pre; }
+        body { background: #f8f8f8; }
+        #controls { margin: 10px 0; }
+    </style>
+</head>
 <body>
-  <h2>VRP Simulation Map</h2>
-  <img src="../output/map/initial_map.png" width="800" />
-  <hr>
-  <h3>Legend:</h3>
-  <ul>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#654321;"></span> 🌲 Wood</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#FFD700;"></span> 💰 Gold</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#C00000;"></span> 🍖 Food</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#0000FF;"></span> 📦 Drop-off</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#006400;"></span> 🏠 Town Center</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#FF0000;"></span> 🏴 Enemy Build</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#00FFFF;"></span> 🏛️ Friendly Build</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#AA00FF;"></span> ⛪ Temple</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#505050;"></span> 🛡️ Armory</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#000000;"></span> 🏰 Fortress</li>
-    <li><span style="display:inline-block;width:20px;height:20px;background:#FFFFFF;border:1px solid #000;"></span> ⚡ Titan Gate</li>
-  </ul>
+<h2>Map & Path Emoji Renderer</h2>
+<div id="controls">
+    <button onclick="startAnim()">Play</button>
+    <button onclick="resetAnim()">Reset</button>
+</div>
+<div id="map-area">Loading...</div>
+<script>
+const CELL_EMOJI = {
+    0: "⬜️",    // empty
+    1: "💰",    // gold
+    2: "🌾",    // food
+    3: "🌲",    // wood
+    4: "🏠",    // drop-off
+    5: "🏰",    // town center
+    6: "🚩",    // enemy build
+    7: "🛖",    // friendly build
+    8: "⛩️",    // temple
+    9: "🏭",    // armory
+    10:"🛡️",    // fortress
+    11:"🚪",    // titan gate
+};
+const VILLAGER_COLORS = [
+    "🟩","🟦","🟥","🟨","🟧","🟪","🟫","⬛️","🟦","🟩","🟥","🟨"
+];
+
+let mapArray = null;
+let villagerTracks = null;
+let maxLen = 0;
+let animStep = 0;
+let animTimer = null;
+const STEP_PER_FRAME = 20;
+
+function render(step) {
+    let colorMap = {};
+    for (let v = 0; v < villagerTracks.length; ++v) {
+        let color = VILLAGER_COLORS[v % VILLAGER_COLORS.length];
+        for (let i = 0; i < Math.min(step + 1, villagerTracks[v].length); ++i) {
+            let c = villagerTracks[v][i];
+            colorMap[c[0] + ',' + c[1]] = color; // 注意：c[0]=x, c[1]=y
+        }
+        // 起点用 👨‍🌾
+        if (villagerTracks[v].length > 0) {
+            let c = villagerTracks[v][0];
+            colorMap[c[0] + ',' + c[1]] = "👨‍🌾";
+        }
+    }
+    let mapH = mapArray.length, mapW = mapArray[0].length;
+    let result = '';
+    for (let y = 0; y < mapH; y++) {
+        for (let x = 0; x < mapW; x++) {
+            let k = x + ',' + y;
+            if (colorMap[k]) {
+                result += colorMap[k];
+            } else {
+                let v = mapArray[y][x];
+                result += CELL_EMOJI.hasOwnProperty(v) ? CELL_EMOJI[v] : "❓";
+            }
+        }
+        result += '\n';
+    }
+    document.getElementById('map-area').textContent = result;
+}
+
+function animate() {
+    render(animStep);
+    animStep += STEP_PER_FRAME;
+    if (animStep < maxLen) {
+        animTimer = setTimeout(animate, 10);
+    } else {
+        animStep = maxLen - 1;
+        render(animStep);
+        animTimer = null;
+    }
+}
+
+function startAnim() {
+    if (animTimer) return;
+    if (animStep >= maxLen) animStep = 0;
+    animate();
+}
+function resetAnim() {
+    pauseAnim();
+    animStep = 0;
+    render(0);
+}
+
+// 加载数据
+Promise.all([
+    fetch('../output/map/initial_map.txt').then(r => r.text()),
+    fetch('../output/path_rank2.json').then(r => r.json())
+]).then(([mapText, json]) => {
+    let lines = mapText.trim().split('\n');
+    lines = lines.slice(1);
+    mapArray = lines.map(line => line.trim().split(/\s+/).map(Number));
+    villagerTracks = json.villagers.map(v => v.path);
+    maxLen = Math.max(...villagerTracks.map(p => p.length));
+    animStep = 0;
+    render(animStep);
+}).catch(err => {
+    document.getElementById('map-area').textContent = '加载文件失败：' + err;
+});
+</script>
+
+<style>
+    #map-area {
+        font-size: 20px;           /* 可以根据需要调整大小 */
+        font-family: monospace;
+        white-space: pre;
+        line-height: 1;            /* 关键：行间距=字体高度 */
+        vertical-align: middle;    /* emoji 居中 */
+        letter-spacing: 0;         /* 去除间距 */
+        padding: 0;
+        margin: 0;
+    }
+    body { 
+        background: #f8f8f8;
+        line-height: 1;           /* 防止 body 自带行高影响 */
+        padding: 0;
+        margin: 0;
+    }
+</style>
 </body>
 </html>

@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
             }
             printf("\n");
         }
+
+        char fname[128];
+        snprintf(fname, sizeof(fname), "output/path_rank%d.json", rank);
+        export_paths_to_json(villager_paths, villager_count, fname);
     }
 
     free(villager_paths);

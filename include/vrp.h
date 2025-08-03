@@ -33,6 +33,8 @@ typedef struct {
 } Task;
 
 int find_path(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int tx, int ty, Path *path);
+void export_paths_to_json(Path *villager_paths, int num_villagers, const char *filename);
+int find_nearest_resource(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int target_type, int *used_flag, Path *out_path, int *out_x, int *out_y);
 // Strategy function declarations
 StrategyResult assign_task_optimal_permutation(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
 StrategyResult assign_task_greedy_nearest(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
