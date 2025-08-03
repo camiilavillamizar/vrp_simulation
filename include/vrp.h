@@ -34,9 +34,9 @@ typedef struct {
 
 int find_path(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int tx, int ty, Path *path);
 // Strategy function declarations
-StrategyResult assign_task_greedy(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-StrategyResult assign_task_max_profit(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-StrategyResult assign_task_stage_based(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-StrategyResult assign_task_region_based(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
+StrategyResult assign_task_optimal_permutation(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
+StrategyResult assign_task_greedy_nearest(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
+StrategyResult assign_task_simulated_annealing(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
+// StrategyResult assign_task_region_based(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
 
 #endif

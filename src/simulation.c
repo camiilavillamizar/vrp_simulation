@@ -19,9 +19,9 @@ int main(int argc, char** argv) {
         render_to_ppm("output/map/initial_map.ppm", &game_map);
     }
 
-    if (rank != 0) {
-        printf("Pre-bcast: width=%d height=%d vcount=%d\n", game_map.width, game_map.height, villager_count);
-    }
+    // if (rank != 0) {
+    //     printf("Pre-bcast: width=%d height=%d vcount=%d\n", game_map.width, game_map.height, villager_count);
+    // }
 
     MPI_Bcast(&game_map.width, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&game_map.height, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -30,23 +30,23 @@ int main(int argc, char** argv) {
     MPI_Bcast(&villager_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(villagers, villager_count * sizeof(Villager), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-    printf("[RANK %d] Post-bcast: width=%d height=%d vcount=%d\n", rank, game_map.width, game_map.height, villager_count);
+    // printf("[RANK %d] Post-bcast: width=%d height=%d vcount=%d\n", rank, game_map.width, game_map.height, villager_count);
 
     Path *villager_paths = (Path*)malloc(sizeof(Path) * villager_count);
 
     StrategyResult result = {0, 0};
     switch (rank) {
         case 1:
-            result = assign_task_greedy(&game_map, villagers, villager_count, villager_paths);
+            result = assign_task_optimal_permutation(&game_map, villagers, villager_count, villager_paths);
             break;
         case 2:
-            result = assign_task_max_profit(&game_map, villagers, villager_count, villager_paths);
+            result = assign_task_greedy_nearest(&game_map, villagers, villager_count, villager_paths);
             break;
         case 3:
-            result = assign_task_stage_based(&game_map, villagers, villager_count, villager_paths);
+            result = assign_task_simulated_annealing(&game_map, villagers, villager_count, villager_paths);
             break;
         case 4:
-            result = assign_task_region_based(&game_map, villagers, villager_count, villager_paths);
+            // result = assign_task_region_based(&game_map, villagers, villager_count, villager_paths);
             break;
         default:
             break;
