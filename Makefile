@@ -19,7 +19,7 @@ clean:
 
 # === Run with MPI ===
 run: $(BIN)
-	mpirun --allow-run-as-root -np 2 ./$(BIN)
+	mpirun --allow-run-as-root -np 4 ./$(BIN)
 
 # === Convert PPM to PNG ===
 convert: $(OUTLINE_DIR)/map/initial_map.ppm

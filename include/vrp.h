@@ -1,44 +1,37 @@
 #ifndef VRP_H
 #define VRP_H
 
-#include "game_rules.h"
 #include "map.h"
-#include "villager.h"
-#include <mpi.h>
-#define MAX_PATH_LEN 4096
 
 typedef struct {
-  int x[MAX_PATH_LEN];
-  int y[MAX_PATH_LEN];
-  int length;
-} Path;
-
-#define STRATEGY_GREEDY_PATH           0
-#define STRATEGY_MAX_PROFIT            1
-#define STRATEGY_STAGE_CONCENTRATION   2
-#define STRATEGY_REGION_SCHEDULING     3
-
-typedef struct {
-  int total_collected;
-  int total_ticks;
+  int strategy_id;
+  int total_ticket;
+  int used_ticks;
+  long long total_distance;
 } StrategyResult;
 
+// Log for each villager's action in a tick
 typedef struct {
-  int x, y;
-} Position;
+  int villager_id;      // Villager ID
+  int action_idx;       // The order of resource collection in this tick (0,1,...)
+  int resource_type;    // CELL_GOLD, CELL_WOOD, CELL_FOOD
+  int x, y;             // Resource coordinate
+  int amount;           // Amount collected this action
+} VillagerAction;
 
-typedef struct {
-  Position target;
-  int type; // CELL_WOOD, CELL_GOLD, CELL_FOOD
-} Task;
+void run_strategy_simulation(
+  int strategy_id,
+  int *total_ticket,
+  int *used_ticks,
+  long long *total_distance,
+  int mpi_rank
+);
 
-int find_path(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int tx, int ty, Path *path);
-void export_paths_to_json(Path *villager_paths, int num_villagers, const char *filename);
-int find_nearest_resource(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int target_type, int *used_flag, Path *out_path, int *out_x, int *out_y);
-// Strategy function declarations
-StrategyResult assign_task_optimal_permutation(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-StrategyResult assign_task_greedy_nearest(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-StrategyResult assign_task_simulated_annealing(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
-// StrategyResult assign_task_region_based(Map *map, Villager *villagers, int num_villagers, Path *villager_paths);
+void save_tick_state(
+    const char *folder, int strategy_id, int tick,
+    int villager_x[], int villager_y[],
+    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[MAX_VILLAGERS]
+);
 
 #endif

@@ -1,340 +1,231 @@
-#include "vrp.h"
-#include <limits.h>
-#include <stdlib.h>
-#include <math.h>
+#include "VRP.h"
+#include "game_rules.h"
+#include "map.h"
+#include "villager.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <math.h>
 #include <omp.h>
-#include <time.h>
-#include <assert.h>
+#include <mpi.h>
 
-// ==== Check if a path is continuous (no jumps between steps) ====
-int is_path_continuous(const Path *p) {
-    for (int i = 1; i < p->length; ++i) {
-        int dx = abs(p->x[i] - p->x[i-1]);
-        int dy = abs(p->y[i] - p->y[i-1]);
-        if (!((dx == 1 && dy == 0) || (dx == 0 && dy == 1)))
-            return 0;
-    }
-    return 1;
+#define FOLDER "output/ticks"
+#define MAX_DROPOFF 100
+#define K_NEAREST 5
+
+// Manhattan distance helper
+static inline int manhattan(int x1, int y1, int x2, int y2) {
+    return abs(x1-x2) + abs(y1-y2);
 }
 
-// ==== Simple Queue implementation for BFS ====
-typedef struct QueueNode { int x, y; struct QueueNode *next; } QueueNode;
-typedef struct { QueueNode *front, *rear; } Queue;
-
-Queue *create_queue() {
-    Queue *q = (Queue *)malloc(sizeof(Queue));
-    q->front = q->rear = NULL;
-    return q;
-}
-void enqueue(Queue *q, int x, int y) {
-    QueueNode *node = (QueueNode *)malloc(sizeof(QueueNode));
-    node->x = x; node->y = y; node->next = NULL;
-    if (q->rear) q->rear->next = node;
-    else q->front = node;
-    q->rear = node;
-}
-void dequeue(Queue *q, int *x, int *y) {
-    if (!q->front) { *x = *y = -1; return; }
-    QueueNode *tmp = q->front;
-    *x = tmp->x; *y = tmp->y;
-    q->front = q->front->next;
-    if (!q->front) q->rear = NULL;
-    free(tmp);
-}
-int is_queue_empty(Queue *q) { return q->front == NULL; }
-void free_queue(Queue *q) { int x, y; while (!is_queue_empty(q)) dequeue(q, &x, &y); free(q); }
-
-typedef struct { int x, y; } Coord;
-
-// ==== BFS: Find shortest path from (sx,sy) to (tx,ty) ====
-int find_path(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int tx, int ty, Path *path) {
-    int *visited = (int *)calloc(MAP_WIDTH * MAP_HEIGHT, sizeof(int));
-    Coord *prev = (Coord *)malloc(MAP_WIDTH * MAP_HEIGHT * sizeof(Coord));
-    if (!visited || !prev) {
-        fprintf(stderr, "find_path: out of memory\n");
-        if (visited) free(visited);
-        if (prev) free(prev);
-        path->length = 0;
-        return 0;
-    }
-    Queue *q = create_queue();
-    enqueue(q, sx, sy);
-    visited[sy * MAP_WIDTH + sx] = 1;
-    prev[sy * MAP_WIDTH + sx] = (Coord){-1, -1};
-    int found = 0;
-    int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
-    while (!is_queue_empty(q)) {
-        int cx, cy; dequeue(q, &cx, &cy);
-        for (int d = 0; d < 4; d++) {
-            int nx = cx + dx[d], ny = cy + dy[d];
-            if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
-            if (visited[ny * MAP_WIDTH + nx]) continue;
-            if (map[ny][nx] > CELL_FRIENDLY_BLD) continue;
-            prev[ny * MAP_WIDTH + nx] = (Coord){cx, cy};
-            visited[ny * MAP_WIDTH + nx] = 1;
-            enqueue(q, nx, ny);
-            if (nx == tx && ny == ty) { found = 1; goto done; }
-        }
-    }
-done:
-    free_queue(q);
-    if (found) {
-        int px = tx, py = ty, len = 0;
-        while (px != -1 && py != -1 && len < MAX_PATH_LEN) {
-            path->x[len] = px;
-            path->y[len] = py;
-            len++;
-            Coord p = prev[py * MAP_WIDTH + px];
-            px = p.x;
-            py = p.y;
-        }
-        // Reverse path to get it from start to end
-        for (int i = 0; i < len / 2; i++) {
-            int t = path->x[i]; path->x[i] = path->x[len - 1 - i]; path->x[len - 1 - i] = t;
-            t = path->y[i]; path->y[i] = path->y[len - 1 - i]; path->y[len - 1 - i] = t;
-        }
-        path->length = len;
-        // Optionally, you can assert continuity here for debugging
-    } else {
-        path->length = 0;
-    }
-    free(visited);
-    free(prev);
-    return found;
-}
-
-// ==== Merge two paths into one, skipping duplicate points ====
-void merge_path(const Path *p1, const Path *p2, Path *result) {
-    int i, start = 0;
-    result->length = 0;
-    // Copy all points from the first path
-    for (i = 0; i < p1->length && result->length < MAX_PATH_LEN; i++) {
-        result->x[result->length] = p1->x[i];
-        result->y[result->length] = p1->y[i];
-        result->length++;
-    }
-    // If last point of p1 equals first point of p2, skip the first point of p2
-    if (p1->length > 0 && p2->length > 0 &&
-        p1->x[p1->length-1] == p2->x[0] && p1->y[p1->length-1] == p2->y[0]) start = 1;
-    // Append remaining points from p2
-    for (i = start; i < p2->length && result->length < MAX_PATH_LEN; i++) {
-        if (result->length > 0 &&
-            result->x[result->length-1] == p2->x[i] &&
-            result->y[result->length-1] == p2->y[i]) continue;
-        result->x[result->length] = p2->x[i];
-        result->y[result->length] = p2->y[i];
-        result->length++;
-    }
-    // For robustness, check continuity but never abort
-    if (!is_path_continuous(result)) {
-        fprintf(stderr, "[WARNING] Discontinuity in merged path\n");
-        result->length = 0; // Mark as invalid
-    }
-}
-
-// ==== next_permutation utility ====
-int next_permutation(int *a, int n) {
-    int i = n-2;
-    while(i>=0 && a[i]>=a[i+1]) i--;
-    if(i<0) return 0;
-    int j=n-1;
-    while(a[j]<=a[i]) j--;
-    int t=a[i]; a[i]=a[j]; a[j]=t;
-    for(int l=i+1,r=n-1;l<r;l++,r--) { t=a[l]; a[l]=a[r]; a[r]=t; }
-    return 1;
-}
-
-// ==== Find nearest resource ====
-int find_nearest_resource(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int target_type, int *used_flag, Path *out_path, int *out_x, int *out_y) {
-    int min_dist = INT_MAX, found = 0;
-    Path best_path = {0};
-    for (int y = 0; y < MAP_HEIGHT; y++)
-    for (int x = 0; x < MAP_WIDTH; x++) {
-        if (map[y][x] == target_type && (!used_flag || !used_flag[y * MAP_WIDTH + x])) {
-            Path p = {0};
-            if (!find_path(map, sx, sy, x, y, &p)) continue;
-            if (p.length < 2) continue;
-            int dist = p.length - 1;
-            if (dist < min_dist) {
-                min_dist = dist; best_path = p;
-                if (out_x) *out_x = x;
-                if (out_y) *out_y = y;
-                found = 1;
+// Find all drop-off points on the map
+void find_all_dropoffs(int *xs, int *ys, int *n) {
+    *n = 0;
+    for (int y = 0; y < game_map.height; ++y)
+        for (int x = 0; x < game_map.width; ++x)
+            if (game_map.cells[y][x] == CELL_DROP_OFF || game_map.cells[y][x] == CELL_TOWN_CENTER) {
+                xs[*n] = x;
+                ys[*n] = y;
+                (*n)++;
+                if (*n >= MAX_DROPOFF) return;
             }
-        }
-    }
-    if (found) { if (out_path) *out_path = best_path; return min_dist; }
-    return -1;
 }
 
-// ==== Find nearest dropoff (includes town center) ====
-int find_nearest_dropoff(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, Path *out_path, int *out_x, int *out_y) {
-    int min_dist = INT_MAX, found = 0;
-    Path best_path = {0};
-    for (int y = 0; y < MAP_HEIGHT; y++)
-    for (int x = 0; x < MAP_WIDTH; x++) {
-        if (map[y][x] == CELL_DROP_OFF || map[y][x] == CELL_TOWN_CENTER) {
-            Path p = {0};
-            if (!find_path(map, sx, sy, x, y, &p)) continue;
-            if (p.length < 2) continue;
-            int dist = p.length - 1;
-            if (dist < min_dist) {
-                min_dist = dist; best_path = p;
-                if (out_x) *out_x = x;
-                if (out_y) *out_y = y;
-                found = 1;
-            }
-        }
+// Find the nearest drop-off from a given point
+void nearest_dropoff(int from_x, int from_y, int *drop_x, int *drop_y) {
+    int xs[MAX_DROPOFF], ys[MAX_DROPOFF], n;
+    find_all_dropoffs(xs, ys, &n);
+    int min_dist = 1e9, best = 0;
+    for (int i = 0; i < n; ++i) {
+        int d = manhattan(from_x, from_y, xs[i], ys[i]);
+        if (d < min_dist) { min_dist = d; best = i; }
     }
-    if (found) { if (out_path) *out_path = best_path; return min_dist; }
-    return -1;
+    *drop_x = xs[best]; *drop_y = ys[best];
 }
 
-void swap_int(int *a, int *b) { int t = *a; *a = *b; *b = t; }
-float frand() { return rand()/(float)RAND_MAX; }
+// Save tick state with full per-villager action log
+void save_tick_state(
+    const char *folder, int strategy_id, int tick,
+    int villager_x[], int villager_y[],
+    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[MAX_VILLAGERS]
+) {
+    struct stat st = {0};
+    if (stat(folder, &st) == -1) mkdir(folder, 0700);
+    char filename[256];
+    snprintf(filename, sizeof(filename), "%s/strategy%d_tick%03d.txt", folder, strategy_id, tick);
+    FILE *f = fopen(filename, "w");
+    if (!f) return;
 
-// ==== Greedy Resource Collection: always use last path endpoint as next BFS start ====
-StrategyResult assign_task_greedy_nearest(Map *map, Villager *villagers, int num_villagers, Path *villager_paths) {
-    StrategyResult result = {0, 0};
-    #pragma omp parallel for
-    for (int i = 0; i < num_villagers; i++) {
-        int left_types[3] = {CELL_GOLD, CELL_FOOD, CELL_WOOD};
-        int used_types[3] = {0, 0, 0};
-        int *used_flag = (int*)calloc(MAP_HEIGHT * MAP_WIDTH, sizeof(int));
-        int cur_x = villagers[i].x, cur_y = villagers[i].y, total_dist = 0;
-        Path path_accum = {0};
-        int fail = 0;
-        for (int step = 0; step < 3; step++) {
-            int min_d = INT_MAX, min_idx = -1, tx = -1, ty = -1;
-            Path tmp = {0};
-            // Search for the nearest *unused* resource from the current position
-            for (int j = 0; j < 3; j++) {
-                if (used_types[j]) continue;
-                int dummy_x, dummy_y;
-                int d = find_nearest_resource(map->cells, cur_x, cur_y, left_types[j], used_flag, &tmp, &dummy_x, &dummy_y);
-                if (d >= 0 && d < min_d) {
-                    min_d = d; min_idx = j; tx = dummy_x; ty = dummy_y;
-                }
-            }
-            if (min_idx == -1) { fail=1; break; }
-            used_types[min_idx] = 1; used_flag[ty * MAP_WIDTH + tx] = 1;
-            // Always start BFS from current position, so merge is always continuous
-            if (path_accum.length == 0)
-                path_accum = tmp;
-            else {
-                Path new_path = {0};
-                merge_path(&path_accum, &tmp, &new_path);
-                path_accum = new_path;
-            }
-            if (!is_path_continuous(&path_accum)) {
-                fprintf(stderr, "[WARNING] Discontinuous path for villager %d at step %d, skipping villager\n", i, step);
-                fail = 1; break;
-            }
-            cur_x = tx; cur_y = ty;
-            total_dist += (tmp.length ? tmp.length-1 : 0);
+    fprintf(f, "Tick %d\nVillagers (final position):\n", tick);
+    for (int i = 0; i < MAX_VILLAGERS; ++i)
+        fprintf(f, "V%d: (%d,%d)\n", i, villager_x[i], villager_y[i]);
+
+    fprintf(f, "Collection Log This Tick:\n");
+    for (int i = 0; i < MAX_VILLAGERS; ++i) {
+        for (int j = 0; j < action_counts[i]; ++j) {
+            VillagerAction* act = &tick_actions[i][j];
+            const char* rtype = (act->resource_type == CELL_GOLD ? "GOLD" :
+                                (act->resource_type == CELL_FOOD ? "FOOD" :
+                                (act->resource_type == CELL_WOOD ? "WOOD" : "UNKNOWN")));
+            fprintf(f, "V%d action %d: %s at (%d,%d), amount=%d\n",
+                act->villager_id, act->action_idx,
+                rtype, act->x, act->y, act->amount);
         }
-        // Find path to nearest dropoff (from last collected resource)
-        if (!fail) {
-            int dropoff_x, dropoff_y;
-            Path to_drop = {0};
-            int d = find_nearest_dropoff(map->cells, cur_x, cur_y, &to_drop, &dropoff_x, &dropoff_y);
-            if (d < 0) fail=1;
-            else {
-                Path new_path = {0};
-                merge_path(&path_accum, &to_drop, &new_path);
-                path_accum = new_path;
-                total_dist += (to_drop.length ? to_drop.length-1 : 0);
-                if (!is_path_continuous(&path_accum)) {
-                    fprintf(stderr, "[WARNING] Discontinuous path for villager %d after dropoff\n", i);
-                    fail = 1;
-                } else {
-                    villager_paths[i] = path_accum;
-                    result.total_ticks += total_dist;
-                    result.total_collected += VILLAGER_CAPACITY * 3;
+    }
+
+    fprintf(f, "Resources:\n");
+    for (int y = 0; y < game_map.height; ++y)
+        for (int x = 0; x < game_map.width; ++x)
+            if (game_map.resources[y][x].amount > 0)
+                fprintf(f, "Res(%d) @(%d,%d): amt=%d\n",
+                    game_map.resources[y][x].type, x, y, game_map.resources[y][x].amount);
+    fclose(f);
+}
+
+// Main "knapsack" collection routine for a single villager, with action log
+int villager_collect_knapsack(
+    int tid, int *vx, int *vy, int *dist_sum, int selector,
+    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[MAX_VILLAGERS]
+) {
+    int left = VILLAGER_CAPACITY;
+    int ticket = 0;
+    int start_x = vx[tid], start_y = vy[tid];
+
+    while (left > 0) {
+        int best_x = -1, best_y = -1, best_type = -1, take = 0;
+        double best_score = -1e9;
+
+        for (int y = 0; y < game_map.height; ++y) {
+            for (int x = 0; x < game_map.width; ++x) {
+                Resource *res = &game_map.resources[y][x];
+                if (res->amount > 0) {
+                    int t_per = 0;
+                    if (res->type == CELL_GOLD) t_per = TICKET_PER_GOLD;
+                    else if (res->type == CELL_WOOD) t_per = TICKET_PER_WOOD;
+                    else if (res->type == CELL_FOOD) t_per = TICKET_PER_FOOD;
+                    else continue;
+                    int d = manhattan(start_x, start_y, x, y);
+                    int can_take = (res->amount > left) ? left : res->amount;
+                    if (can_take == 0) continue;
+                    double score = 0.0;
+                    if (selector == 0) score = -d; // Greedy: nearest
+                    else if (selector == 1) score = (double)(can_take * t_per) / (d+1); // Max profit per distance
+                    else if (selector == 2) {
+                        // KNN: find among K nearest, take max capacity
+                        static int kx[K_NEAREST], ky[K_NEAREST], kd[K_NEAREST], kn = 0;
+                        kn = 0;
+                        for (int yy = 0; yy < game_map.height; ++yy) for (int xx = 0; xx < game_map.width; ++xx) {
+                            Resource *r = &game_map.resources[yy][xx];
+                            if (r->amount > 0 && (r->type == res->type)) {
+                                int dd = manhattan(start_x, start_y, xx, yy);
+                                if (kn < K_NEAREST) { kx[kn]=xx; ky[kn]=yy; kd[kn]=dd; kn++; }
+                                else {
+                                    int max_idx = 0;
+                                    for (int j = 1; j < K_NEAREST; ++j) if (kd[j] > kd[max_idx]) max_idx = j;
+                                    if (dd < kd[max_idx]) { kx[max_idx]=xx; ky[max_idx]=yy; kd[max_idx]=dd; }
+                                }
+                            }
+                        }
+                        int max_cap = -1;
+                        for (int j = 0; j < kn; ++j) {
+                            Resource *rr = &game_map.resources[ky[j]][kx[j]];
+                            if (rr->amount > max_cap) { max_cap = rr->amount; best_x = kx[j]; best_y = ky[j]; best_type = res->type; }
+                        }
+                        if (max_cap > 0) { take = (max_cap > left) ? left : max_cap; }
+                        break;
+                    }
+                    if (selector != 2 && score > best_score) {
+                        best_score = score;
+                        best_x = x; best_y = y; best_type = res->type;
+                        take = can_take;
+                    }
                 }
             }
         }
-        free(used_flag);
-        if (fail) villager_paths[i].length = 0; // Mark invalid
-    }
-    return result;
-}
+        if (best_x == -1 || take == 0) break;
 
-// ==== Brute-force optimal resource collection by permutation (always continuous) ====
-StrategyResult assign_task_optimal_permutation(Map *map, Villager *villagers, int num_villagers, Path *villager_paths) {
-    StrategyResult result = {0, 0};
-    #pragma omp parallel for
-    for (int i = 0; i < num_villagers; i++) {
-        int order[3] = {CELL_GOLD, CELL_FOOD, CELL_WOOD}, best_order[3] = {CELL_GOLD, CELL_FOOD, CELL_WOOD};
-        int min_dist = INT_MAX; Path best_path = {0};
-        do {
-            int cur_x = villagers[i].x, cur_y = villagers[i].y, total_dist = 0;
-            int used_flag[MAP_HEIGHT * MAP_WIDTH] = {0};
-            Path path_accum = {0}; int valid = 1;
-            for (int j = 0; j < 3; j++) {
-                int tx, ty; Path tmp = {0};
-                int d = find_nearest_resource(map->cells, cur_x, cur_y, order[j], used_flag, &tmp, &tx, &ty);
-                if (d < 0) { valid = 0; break; }
-                used_flag[ty * MAP_WIDTH + tx] = 1;
-                if (path_accum.length == 0) path_accum = tmp;
-                else {
-                    Path new_path = {0};
-                    merge_path(&path_accum, &tmp, &new_path);
-                    if (!is_path_continuous(&new_path)) { valid = 0; break; }
-                    path_accum = new_path;
-                }
-                cur_x = tx; cur_y = ty;
-                total_dist += (tmp.length ? tmp.length-1 : 0);
-            }
-            int dropoff_x, dropoff_y; Path to_drop = {0};
-            int d = find_nearest_dropoff(map->cells, cur_x, cur_y, &to_drop, &dropoff_x, &dropoff_y);
-            if (d < 0) valid = 0;
-            else {
-                Path new_path = {0};
-                merge_path(&path_accum, &to_drop, &new_path);
-                if (!is_path_continuous(&new_path)) valid = 0;
-                else {
-                    path_accum = new_path;
-                    total_dist += (to_drop.length ? to_drop.length-1 : 0);
-                }
-            }
-            if (valid && total_dist < min_dist) {
-                min_dist = total_dist;
-                memcpy(best_order, order, sizeof(order));
-                best_path = path_accum;
-            }
-        } while (next_permutation(order, 3));
-        villager_paths[i] = best_path;
-        result.total_ticks += min_dist;
-        result.total_collected += VILLAGER_CAPACITY * 3;
-    }
-    return result;
-}
+        int drop_x, drop_y;
+        nearest_dropoff(best_x, best_y, &drop_x, &drop_y);
+        int go_to = manhattan(start_x, start_y, best_x, best_y);
+        int back = manhattan(best_x, best_y, drop_x, drop_y);
 
-// ==== Simulated Annealing fallback: here we use permutation for robustness ====
-StrategyResult assign_task_simulated_annealing(Map *map, Villager *villagers, int num_villagers, Path *villager_paths) {
-    return assign_task_optimal_permutation(map, villagers, num_villagers, villager_paths);
-}
-
-// ==== Export all villager paths to a JSON file ====
-void export_paths_to_json(Path *villager_paths, int num_villagers, const char *filename) {
-    FILE *fp = fopen(filename, "w");
-    if (!fp) {
-        fprintf(stderr, "Failed to open file %s for writing\n", filename);
-        return;
-    }
-    fprintf(fp, "{\n  \"villagers\": [\n");
-    for (int i = 0; i < num_villagers; i++) {
-        fprintf(fp, "    { \"id\": %d, \"length\": %d, \"path\": [", i, villager_paths[i].length);
-        for (int j = 0; j < villager_paths[i].length; j++) {
-            fprintf(fp, "[%d,%d]", villager_paths[i].x[j], villager_paths[i].y[j]);
-            if (j != villager_paths[i].length - 1) fprintf(fp, ", ");
+        int got = 0;
+        #pragma omp critical
+        {
+            Resource *target = &game_map.resources[best_y][best_x];
+            int canreally = (target->amount > take) ? take : target->amount;
+            target->amount -= canreally;
+            ticket += canreally * ((best_type==CELL_GOLD)?TICKET_PER_GOLD : (best_type==CELL_WOOD)?TICKET_PER_WOOD : TICKET_PER_FOOD);
+            got = canreally;
+            left -= canreally;
         }
-        fprintf(fp, "] }%s\n", (i == num_villagers-1 ? "" : ","));
+        // Log action for this tick
+        int act_idx = action_counts[tid]++;
+        tick_actions[tid][act_idx].villager_id = tid;
+        tick_actions[tid][act_idx].action_idx = act_idx;
+        tick_actions[tid][act_idx].resource_type = best_type;
+        tick_actions[tid][act_idx].x = best_x;
+        tick_actions[tid][act_idx].y = best_y;
+        tick_actions[tid][act_idx].amount = got;
+
+        *dist_sum += go_to + back;
+        vx[tid] = drop_x; vy[tid] = drop_y;
+        start_x = drop_x; start_y = drop_y;
     }
-    fprintf(fp, "  ]\n}\n");
-    fclose(fp);
-    printf("[Export] Saved villager paths to %s\n", filename);
+    return ticket;
+}
+
+// Simulation loop with logging per tick
+void run_strategy_simulation(
+    int strategy_id,
+    int *total_ticket,
+    int *used_ticks,
+    long long *total_distance,
+    int mpi_rank
+) {
+    int tick = 0, finished = 0;
+    int villager_x[MAX_VILLAGERS], villager_y[MAX_VILLAGERS];
+    int dist_sum[MAX_VILLAGERS] = {0};
+    int total_ticket_local = 0;
+
+    int drop_x, drop_y;
+    nearest_dropoff(game_map.width / 2, game_map.height / 2, &drop_x, &drop_y);
+    for (int i = 0; i < MAX_VILLAGERS; ++i) {
+        villager_x[i] = drop_x; villager_y[i] = drop_y;
+    }
+
+    *total_ticket = 0; *used_ticks = 0; *total_distance = 0;
+    double t_start = MPI_Wtime();
+
+    while (!finished) {
+        int round_ticket = 0;
+        VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
+        int action_counts[MAX_VILLAGERS] = {0};
+
+        #pragma omp parallel for reduction(+:round_ticket)
+        for (int tid = 0; tid < MAX_VILLAGERS; ++tid) {
+            int t = villager_collect_knapsack(
+                tid, villager_x, villager_y, &dist_sum[tid], strategy_id,
+                tick_actions, action_counts
+            );
+            round_ticket += t;
+        }
+        total_ticket_local += round_ticket;
+
+        save_tick_state(FOLDER, strategy_id, tick, villager_x, villager_y, tick_actions, action_counts);
+        tick++;
+
+        if (total_ticket_local >= GOAL_AMOUNT)
+            finished = 1;
+    }
+    double t_end = MPI_Wtime();
+    *used_ticks = tick;
+    for (int i = 0; i < MAX_VILLAGERS; ++i)
+        *total_distance += dist_sum[i];
+    *total_ticket = total_ticket_local;
+    printf("[Rank %d] Finished: Ticks=%d, Time=%.3fs, Ticket=%d, TotalDist=%lld\n",
+        mpi_rank, *used_ticks, t_end-t_start, *total_ticket, *total_distance);
 }
