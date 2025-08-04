@@ -71,7 +71,7 @@ int find_path(int map[MAP_HEIGHT][MAP_WIDTH], int sx, int sy, int tx, int ty, Pa
             int nx = cx + dx[d], ny = cy + dy[d];
             if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
             if (visited[ny * MAP_WIDTH + nx]) continue;
-            if (map[ny][nx] > CELL_TITAN_GATE) continue;
+            if (map[ny][nx] > CELL_FRIENDLY_BLD) continue;
             prev[ny * MAP_WIDTH + nx] = (Coord){cx, cy};
             visited[ny * MAP_WIDTH + nx] = 1;
             enqueue(q, nx, ny);
