@@ -19,14 +19,6 @@ int total_wood = 0;
 int total_food = 0;
 int tick_count = 0;
 
-typedef enum {
-    STATE_IDLE,
-    STATE_MOVING_TO_RESOURCE,
-    STATE_GATHERING,
-    STATE_RETURNING,
-    STATE_DROPPING
-} VillagerState;
-
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     int rank, size;
