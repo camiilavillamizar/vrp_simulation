@@ -18,9 +18,14 @@
 #define INITIAL_VILLAGERS      3
 
 // ===== SIMULATION SETTINGS =====
-#define MAP_WIDTH               1000
-#define MAP_HEIGHT              1000
+#define MAP_WIDTH               20
+#define MAP_HEIGHT              20
 #define TICK_SLEEP_US          10000  //10ms between ticks for visual pacing (optional)
+
+#define PERCENT_WOOD   0.30  // 30% of the map will be wood
+#define PERCENT_GOLD   0.10  // 10% gold
+#define PERCENT_FOOD   0.15  // 15% food
+
 
 // ===== RESOURCE NODES CAPACITY =====
 #define TREE_CAPACITY       1000    //Wood per tree
@@ -34,5 +39,7 @@
 #define GATHER_TICK_PER_WOOD   2    //25 wood = 50 ticks
 #define GATHER_TICK_PER_GOLD   2
 #define GATHER_TICK_PER_FOOD   3    //Food is slower (like from hunting)
+
+#define GOAL_AMOUNT 25
 
 #endif
