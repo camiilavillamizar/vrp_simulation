@@ -1,45 +1,38 @@
-//Villager's logic 
 #ifndef VILLAGER_H
 #define VILLAGER_H
 
 #include "game_rules.h"
 
-//Represents a single villager in the simulation
+// Structure that represents a single villager in the game
 typedef struct {
-    int id;              // Unique identifier
-    int x, y;            // Current position on the map
-    int carrying_type;   // Type of resource being carried (CELL_WOOD, CELL_GOLD, etc.)
-    int carrying_amount; // Amount being carried (max VILLAGER_CAPACITY)
-    int task;            // Task type (0 = idle, 1 = gathering, 2 = delivering, 3 = building, ...)
-    int target_x;        // Target cell x
-    int target_y;        // Target cell y
-    int ticks_remaining; // Time left to complete current action
+    int id;                 // Unique identifier for the villager
+    int x, y;               // Current position on the map
+    int carrying_type;      // Type of resource being carried (GOLD, WOOD, FOOD, or EMPTY)
+    int carrying_amount;    // How much of the resource the villager is carrying
+    int task;               // Current task status (e.g., idle, moving, gathering)
+    int target_x, target_y; // Target position for current task
+    int ticks_remaining;    // Ticks left to complete current task (for future expansions)
 } Villager;
 
-//Array of all active villagers
+// Global array holding all villagers in the game
 extern Villager villagers[MAX_VILLAGERS];
 
-//Current number of villagers
+// Number of villagers currently active in the game
 extern int villager_count;
 
-//Initializes the starting villagers around the town center
-void initialize_villagers(int town_x, int town_y);
-
-//Moves each villager one tick forward in their task
-void update_villagers();
-
-//Creates a new villager if there is space (returns 1 if successful, 0 if full)
+// Creates a new villager at the specified (x, y) location
 int create_villager(int x, int y);
 
-//Returns 1 if there is any villager at position (x, y), 0 otherwise
-int is_villager_at(int x, int y);
+// Initializes the starting villagers near the town center
+void initialize_villagers(int town_x, int town_y);
 
-//Renders all villagers into the map (for visual output only)
-void place_villagers_on_map();
+// Main update logic for a single villager, called each game tick
+void update_villager(Villager* v);
 
-//Get and set villagers positions
-void load_villagers_from_file(const char *filename);
+// Saves the state of all villagers to a file
 void save_villagers_to_file(const char *filename);
 
+// Loads the state of villagers from a file
+void load_villagers_from_file(const char *filename);
 
 #endif

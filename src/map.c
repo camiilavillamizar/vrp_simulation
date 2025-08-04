@@ -24,32 +24,67 @@ int get_cell(int x, int y) {
 }
 
 void generate_random_map() {
+    int total_cells = MAP_WIDTH * MAP_HEIGHT;
+    int wood_cells = total_cells * PERCENT_WOOD;
+    int gold_cells = total_cells * PERCENT_GOLD;
+    int food_cells = total_cells * PERCENT_FOOD;
+
     srand(time(NULL));
     game_map.width = MAP_WIDTH;
     game_map.height = MAP_HEIGHT;
+
     // Fill empty
     for (int y = 0; y < MAP_HEIGHT; y++)
-        for (int x = 0; x < MAP_WIDTH; x++)
+        for (int x = 0; x < MAP_WIDTH; x++) {
             game_map.cells[y][x] = CELL_EMPTY;
-    // Example: Place Town Center, resources, villagers
+            game_map.resources[y][x].type = -1;
+            game_map.resources[y][x].amount = 0;
+        }
+
+    // Place Town Center and villagers
     int tc_x = 2, tc_y = 2;
     game_map.cells[tc_y][tc_x] = CELL_TOWN_CENTER;
     initialize_villagers(tc_x, tc_y);
 
-    // Place random resources (demo counts, adjust as needed)
-    for (int i = 0; i < 1000; i++) {
+    // Place WOOD
+    int placed_wood = 0;
+    while (placed_wood < wood_cells) {
         int x = rand() % MAP_WIDTH, y = rand() % MAP_HEIGHT;
-        if (game_map.cells[y][x] == CELL_EMPTY) game_map.cells[y][x] = CELL_WOOD;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_WOOD;
+            game_map.resources[y][x].type = CELL_WOOD;
+            game_map.resources[y][x].amount = TREE_CAPACITY;
+            placed_wood++;
+        }
     }
-    for (int i = 0; i < 500; i++) {
+
+    // Place GOLD
+    int placed_gold = 0;
+    while (placed_gold < gold_cells) {
         int x = rand() % MAP_WIDTH, y = rand() % MAP_HEIGHT;
-        if (game_map.cells[y][x] == CELL_EMPTY) game_map.cells[y][x] = CELL_GOLD;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_GOLD;
+            game_map.resources[y][x].type = CELL_GOLD;
+            game_map.resources[y][x].amount = MINE_CAPACITY;
+            placed_gold++;
+        }
     }
-    for (int i = 0; i < 600; i++) {
+
+    // Place FOOD
+    int placed_food = 0;
+    while (placed_food < food_cells) {
         int x = rand() % MAP_WIDTH, y = rand() % MAP_HEIGHT;
-        if (game_map.cells[y][x] == CELL_EMPTY) game_map.cells[y][x] = CELL_FOOD;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_FOOD;
+            game_map.resources[y][x].type = CELL_FOOD;
+            game_map.resources[y][x].amount = FOOD_NODE_CAPACITY;
+            placed_food++;
+        }
     }
+
+
     save_map_to_file("output/map/initial_map.txt");
+
 }
 
 void save_map_to_file(const char *filename) {
@@ -69,21 +104,55 @@ void save_map_to_file(const char *filename) {
 
 void load_map_from_file(const char *filename) {
     FILE *f = fopen(filename, "r");
-    if (!f) { perror("Failed to open file for reading"); return; }
-    int height, width;
-    if (fscanf(f, "%d %d", &height, &width) != 2) {
-        fprintf(stderr, "Invalid map file format\n"); fclose(f); return;
+    if (!f) {
+        perror("Failed to open file for reading");
+        return;
     }
+
+    int height, width;
+    // Read map dimensions and validate against expected size
+    if (fscanf(f, "%d %d", &height, &width) != 2) {
+        fprintf(stderr, "Invalid map file format\n");
+        fclose(f);
+        return;
+    }
+
     if (height != MAP_HEIGHT || width != MAP_WIDTH) {
         fprintf(stderr, "Map size mismatch: Expected %dx%d, got %dx%d\n",
                 MAP_HEIGHT, MAP_WIDTH, height, width);
-        fclose(f); return;
+        fclose(f);
+        return;
     }
+
     game_map.height = height;
     game_map.width = width;
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-            fscanf(f, "%d", &game_map.cells[y][x]);
+
+    // Load each cell value and initialize resource metadata accordingly
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int cell_type;
+            fscanf(f, "%d", &cell_type);
+            game_map.cells[y][x] = cell_type;
+
+            // Initialize resource properties if this is a resource cell
+            if (cell_type == CELL_WOOD) {
+                game_map.resources[y][x].type = CELL_WOOD;
+                game_map.resources[y][x].amount = TREE_CAPACITY;
+            } else if (cell_type == CELL_GOLD) {
+                game_map.resources[y][x].type = CELL_GOLD;
+                game_map.resources[y][x].amount = MINE_CAPACITY;
+            } else if (cell_type == CELL_FOOD) {
+                game_map.resources[y][x].type = CELL_FOOD;
+                game_map.resources[y][x].amount = FOOD_NODE_CAPACITY;
+            } else {
+                // Non-resource cell
+                game_map.resources[y][x].type = -1;
+                game_map.resources[y][x].amount = 0;
+            }
+        }
+    }
+
+    // Read villager metadata after the map
     char buffer[256];
     int vcount = 0;
     while (fgets(buffer, sizeof(buffer), f)) {
@@ -97,8 +166,10 @@ void load_map_from_file(const char *filename) {
             }
         }
     }
+
     fclose(f);
 }
+
 
 void print_map_viewport(int center_x, int center_y, int view_width, int view_height) {
     int start_x = center_x - view_width / 2;
@@ -111,7 +182,6 @@ void print_map_viewport(int center_x, int center_y, int view_width, int view_hei
                 printf("# ");
                 continue;
             }
-            // Optionally check for villagers here if you want
             printf("%d ", game_map.cells[my][mx]);
         }
         printf("\n");

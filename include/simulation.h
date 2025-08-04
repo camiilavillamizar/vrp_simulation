@@ -1,16 +1,19 @@
-//ticks engine and principal cicle
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
 #include "game_rules.h"
 
-//Starts the simulation loop and controls the game ticks
-void run_simulation();
+// Initializes the global simulation state (resources, age, counters, etc.)
+void initialize_simulation(void);
 
-//Returns true if the player has met the win condition (Titan Gate built)
-bool has_won();
+// Runs one tick of the simulation loop (villager actions, movement, etc.)
+void simulate_tick(void);
 
-//Initializes global simulation state (resources, age, etc.)
-void initialize_simulation();
+// Saves the current map state to a tick file for visualization
+void save_tick_state(int tick);
 
-#endif
+// Returns true if the player has met the win condition (e.g., 1000 of each resource)
+int is_game_over(void);
+void clean_tick_folder(const char *folder);
+
+#endif // SIMULATION_H
