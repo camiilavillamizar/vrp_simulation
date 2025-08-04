@@ -4,9 +4,11 @@
 
 #include "game_rules.h"  
 #include "map_visuals.h"
+#include "resource.h"
 
 typedef struct {
-  int cells[MAP_HEIGHT][MAP_WIDTH];
+  int cells[MAP_HEIGHT][MAP_WIDTH]; 
+  Resource resources[MAP_HEIGHT][MAP_WIDTH]; 
   int width;
   int height;
 } Map;
