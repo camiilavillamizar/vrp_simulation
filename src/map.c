@@ -46,6 +46,17 @@ void generate_random_map() {
     game_map.cells[tc_y][tc_x] = CELL_TOWN_CENTER;
     initialize_villagers(tc_x, tc_y);
 
+    // Place DROP OFFs
+    int dropoff_cells = total_cells * PERCENT_DROP_OFF;
+    int placed_dropoff = 0;
+    while (placed_dropoff < dropoff_cells) {
+        int x = rand() % MAP_WIDTH, y = rand() % MAP_HEIGHT;
+        if (game_map.cells[y][x] == CELL_EMPTY) {
+            game_map.cells[y][x] = CELL_DROP_OFF;
+            placed_dropoff++;
+        }
+    }
+
     // Place WOOD
     int placed_wood = 0;
     while (placed_wood < wood_cells) {

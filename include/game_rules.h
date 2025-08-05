@@ -26,6 +26,8 @@
 #define PERCENT_GOLD   0.10  // 10% gold
 #define PERCENT_FOOD   0.15  // 15% food
 
+#define PERCENT_DROP_OFF 0.02
+
 
 // ===== RESOURCE NODES CAPACITY =====
 #define TREE_CAPACITY       1000    //Wood per tree
