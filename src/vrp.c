@@ -189,7 +189,9 @@ void run_strategy_simulation(
     int tick = 0, finished = 0;
     int villager_x[MAX_VILLAGERS], villager_y[MAX_VILLAGERS];
     int dist_sum[MAX_VILLAGERS] = {0};
-    int total_ticket_local = 0;
+    int total_wood_local = 0;
+    int total_gold_local = 0;
+    int total_food_local = 0;
 
     int drop_x, drop_y;
     nearest_dropoff(game_map.width / 2, game_map.height / 2, &drop_x, &drop_y);
@@ -218,8 +220,11 @@ void run_strategy_simulation(
         save_tick_state(FOLDER, strategy_id, tick, villager_x, villager_y, tick_actions, action_counts);
         tick++;
 
-        if (total_ticket_local >= GOAL_AMOUNT)
+        if (total_wood_local >= GOAL_WOOD &&
+            total_gold_local >= GOAL_GOLD &&
+            total_food_local >= GOAL_FOOD) {
             finished = 1;
+}
     }
     double t_end = MPI_Wtime();
     *used_ticks = tick;

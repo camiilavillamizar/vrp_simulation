@@ -38,10 +38,15 @@
 #define VILLAGER_CAPACITY   25      //Max a villager can carry per trip
 
 //Ticks it takes to gather one unit of each resource
-#define TICKET_PER_WOOD 2
-#define TICKET_PER_GOLD 3
-#define TICKET_PER_FOOD 1
+#define TICKS_PER_WOOD_UNIT 2
+#define TICKS_PER_GOLD_UNIT 3
+#define TICKS_PER_FOOD_UNIT 1
 
 #define GOAL_AMOUNT 10000
+
+#define GOAL_WOOD 100
+#define GOAL_GOLD 100
+#define GOAL_FOOD 100
+
 
 #endif
