@@ -26,9 +26,6 @@ int create_villager(int x, int y);
 // Initializes the starting villagers near the town center
 void initialize_villagers(int town_x, int town_y);
 
-// Main update logic for a single villager, called each game tick
-void update_villager(Villager* v);
-
 // Saves the state of all villagers to a file
 void save_villagers_to_file(const char *filename);
 
