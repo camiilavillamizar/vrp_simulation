@@ -8,6 +8,7 @@ typedef struct {
   int total_collection_effort;
   int used_ticks;
   long long total_distance;
+  double elapsed_time;
 } StrategyResult;
 
 // Log for each villager's action in a tick

@@ -21,11 +21,8 @@
 #define MAX_VILLAGERS         25
 #define INITIAL_VILLAGERS      3
 
-// ===== SIMULATION SETTINGS =====
-#define MAP_WIDTH               20
-#define MAP_HEIGHT              20
-#define TICK_SLEEP_US          10000  //10ms between ticks for visual pacing (optional)
 
+// ===== PERCENTAGE OF EACH ======
 #define PERCENT_WOOD   0.30  // 30% of the map will be wood
 #define PERCENT_GOLD   0.10  // 10% gold
 #define PERCENT_FOOD   0.15  // 15% food
@@ -40,9 +37,10 @@
 #define TICKS_PER_GOLD_UNIT 3
 #define TICKS_PER_FOOD_UNIT 1
 
-#define GOAL_AMOUNT 10000
 
-
+// ===== SIMULATION SETTINGS =====
+#define MAP_WIDTH               20
+#define MAP_HEIGHT              20
 
 // ===== RESOURCE NODES CAPACITY =====
 #define TREE_CAPACITY       100    //Wood per tree

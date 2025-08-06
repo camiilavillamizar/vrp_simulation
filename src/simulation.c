@@ -41,9 +41,13 @@ int main(int argc, char** argv) {
         int total_collection_effort = 0, used_ticks = 0;
         long long total_distance = 0;
 
+        double start_time = MPI_Wtime();
         run_strategy_simulation(strategy_id, &total_collection_effort, &used_ticks, &total_distance, rank);
+        double end_time = MPI_Wtime();
 
-        StrategyResult result = {strategy_id, total_collection_effort, used_ticks, total_distance};
+        double elapsed_time = end_time - start_time;
+
+        StrategyResult result = {strategy_id, total_collection_effort, used_ticks, total_distance, elapsed_time};
         MPI_Send(&result, sizeof(result), MPI_BYTE, 0, 0, MPI_COMM_WORLD);
     }
 
@@ -58,11 +62,12 @@ int main(int argc, char** argv) {
                 (results[i].strategy_id == 0) ? "Greedy Nearest" :
                 (results[i].strategy_id == 1) ? "Max Profit/Distance" :
                 "Optimal Permutation";
-            printf("[Strategy %d: %s]\n  Collection efforts: %d\n  Ticks: %d\n  Total Distance: %lld\n\n",
+            printf("[Strategy %d: %s]\n  Collection efforts: %d\n  Ticks: %d\n  Total Distance: %lld\n  Time: %.4f seconds\n\n",
                 results[i].strategy_id, name,
                 results[i].total_collection_effort,
                 results[i].used_ticks,
-                results[i].total_distance
+                results[i].total_distance,
+                results[i].elapsed_time
             );
         }
     }
