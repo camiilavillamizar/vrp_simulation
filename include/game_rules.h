@@ -32,12 +32,6 @@
 
 #define PERCENT_DROP_OFF 0.02
 
-
-// ===== RESOURCE NODES CAPACITY =====
-#define TREE_CAPACITY       1000    //Wood per tree
-#define MINE_CAPACITY       1000    //Gold per mine
-#define FOOD_NODE_CAPACITY  750     //Food per bush/animal
-
 // ===== GATHERING SETTINGS =====
 #define VILLAGER_CAPACITY   25      //Max a villager can carry per trip
 
@@ -48,11 +42,19 @@
 
 #define GOAL_AMOUNT 10000
 
-#define GOAL_WOOD 100
-#define GOAL_GOLD 100
-#define GOAL_FOOD 100
 
-#define NUMBER_OF_VILLAGERS 3
+
+// ===== RESOURCE NODES CAPACITY =====
+#define TREE_CAPACITY       100    //Wood per tree
+#define MINE_CAPACITY       100    //Gold per mine
+#define FOOD_NODE_CAPACITY  75     //Food per bush/animal
+
+// ===== WIN CONDITIONS =====
+#define GOAL_WOOD 500
+#define GOAL_GOLD 500
+#define GOAL_FOOD 500
+
+#define NUMBER_OF_VILLAGERS 5
 
 
 #endif
