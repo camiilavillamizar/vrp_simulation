@@ -53,7 +53,7 @@ async function loadAllTicks() {
 
     currentTick = 0;
     renderTick(0);
-    startAnim();
+
     console.log(`✅ Loaded ${tickData.length} ticks`);
 
 }
@@ -161,3 +161,57 @@ function startAnim() {
 }
 
 
+function goToNextTick() {
+    if (currentStrategy === null || tickData.length === 0) return;
+
+    if (currentTick < tickData.length - 1) {
+        currentTick++;
+        renderTick(currentTick);
+    }
+}
+
+function goToPreviousTick() {
+    if (currentStrategy === null || tickData.length === 0) return;
+
+    if (currentTick > 0) {
+        currentTick--;
+        renderTick(currentTick);
+    }
+}
+async function playVillagerPaths() {
+    if (!tickData[currentTick]) return;
+
+    const strategy = currentStrategy;
+    const tickInfo = tickData[currentTick];
+    const steps = 3;
+
+    for (let step = 0; step < steps; step++) {
+        const map = await loadTickMap(strategy, currentTick);
+        if (!map) {
+            document.getElementById("map-area").textContent = "⚠️ No se pudo cargar el mapa.";
+            return;
+        }
+
+        // Insertar aldeanos en su posición según el paso actual
+        tickInfo.villagers.forEach(villager => {
+            const [x, y] = villager.path[step];  // 👈 posición en este paso
+            if (map[y] && map[y][x] !== undefined) {
+                map[y][x] = 99;  // código para "👨‍🌾"
+            }
+        });
+
+        // Dibujar mapa con aldeanos en paso actual
+        let output = "";
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[y].length; x++) {
+                const val = map[y][x];
+                output += CELL_EMOJI[val] || "❓";
+            }
+            output += "\n";
+        }
+
+        document.getElementById("map-area").textContent = output;
+
+        await new Promise(resolve => setTimeout(resolve, 300)); // esperar 300ms
+    }
+}

@@ -35,13 +35,6 @@ void save_map_txt_with_villagers(
     for (int y = 0; y < game_map.height; ++y) {
         for (int x = 0; x < game_map.width; ++x) {
             int printed = 0;
-            for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
-                if (villager_x[i] == x && villager_y[i] == y) {
-                    fprintf(f, "V ");
-                    printed = 1;
-                    break;
-                }
-            }
             if (!printed) {
                 fprintf(f, "%d ", game_map.cells[y][x]);
             }
