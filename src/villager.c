@@ -8,6 +8,15 @@ extern int total_gold;
 extern int total_wood;
 extern int total_food;
 
+int offsets[][2] = {
+        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+        {0, 1}, {1, 0}, {0, -1}, {-1, 0},
+        {2, 0}, {0, 2}, {-2, 0}, {0, -2},
+        {2, 1}, {1, 2}, {-2, 1}, {-1, 2},
+        {2, -1}, {1, -2}, {-2, -1}, {-1, -2}
+         
+    };
+
 // Global villager array
 Villager villagers[MAX_VILLAGERS];
 int villager_count = 0;
@@ -36,10 +45,23 @@ int create_villager(int x, int y) {
 }
 
 void initialize_villagers(int town_x, int town_y) {
-    create_villager(town_x + 1, town_y + 1);
-    create_villager(town_x + 1, town_y - 1);
-    create_villager(town_x - 1, town_y + 1);
+    
+    int num_offsets = sizeof(offsets) / sizeof(offsets[0]);
+    int created = 0;
+
+    for (int i = 0; i < num_offsets && created < NUMBER_OF_VILLAGERS; i++) {
+        int x = town_x + offsets[i][0];
+        int y = town_y + offsets[i][1];
+        create_villager(x, y);
+        created++;
+    }
+
+    // Si no hubo suficientes offsets, puedes añadir un fallback aquí
+    if (created < NUMBER_OF_VILLAGERS) {
+        printf("⚠️ Not enough unique spawn positions for %d villagers\n", NUMBER_OF_VILLAGERS);
+    }
 }
+
 
 void save_villagers_to_file(const char *filename) {
     FILE *f = fopen(filename, "w");
