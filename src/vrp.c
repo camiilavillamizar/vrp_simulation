@@ -1,5 +1,6 @@
 #include "VRP.h"
 #include "game_rules.h"
+#include "status_report.h"
 #include "map.h"
 #include "villager.h"
 #include <stdio.h>
@@ -48,8 +49,8 @@ void nearest_dropoff(int from_x, int from_y, int *drop_x, int *drop_y) {
 void save_tick_state(
     const char *folder, int strategy_id, int tick,
     int villager_x[], int villager_y[],
-    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
-    int action_counts[MAX_VILLAGERS]
+    VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[NUMBER_OF_VILLAGERS]
 ) {
     struct stat st = {0};
     if (stat(folder, &st) == -1) mkdir(folder, 0700);
@@ -59,11 +60,11 @@ void save_tick_state(
     if (!f) return;
 
     fprintf(f, "Tick %d\nVillagers (final position):\n", tick);
-    for (int i = 0; i < MAX_VILLAGERS; ++i)
+    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i)
         fprintf(f, "V%d: (%d,%d)\n", i, villager_x[i], villager_y[i]);
 
     fprintf(f, "Collection Log This Tick:\n");
-    for (int i = 0; i < MAX_VILLAGERS; ++i) {
+    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
         for (int j = 0; j < action_counts[i]; ++j) {
             VillagerAction* act = &tick_actions[i][j];
             const char* rtype = (act->resource_type == CELL_GOLD ? "GOLD" :
@@ -87,11 +88,12 @@ void save_tick_state(
 // Main "knapsack" collection routine for a single villager, with action log
 int villager_collect_knapsack(
     int tid, int *vx, int *vy, int *dist_sum, int selector,
-    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
-    int action_counts[MAX_VILLAGERS]
+    VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[NUMBER_OF_VILLAGERS],
+    int* wood_collected, int* gold_collected, int* food_collected
 ) {
     int left = VILLAGER_CAPACITY;
-    int ticket = 0;
+    int collectionEffort = 0;
     int start_x = vx[tid], start_y = vy[tid];
 
     while (left > 0) {
@@ -103,48 +105,29 @@ int villager_collect_knapsack(
                 Resource *res = &game_map.resources[y][x];
                 if (res->amount > 0) {
                     int t_per = 0;
-                    if (res->type == CELL_GOLD) t_per = TICKET_PER_GOLD;
-                    else if (res->type == CELL_WOOD) t_per = TICKET_PER_WOOD;
-                    else if (res->type == CELL_FOOD) t_per = TICKET_PER_FOOD;
+                    if (res->type == CELL_GOLD) t_per = TICKS_PER_GOLD_UNIT;
+                    else if (res->type == CELL_WOOD) t_per = TICKS_PER_WOOD_UNIT;
+                    else if (res->type == CELL_FOOD) t_per = TICKS_PER_FOOD_UNIT;
                     else continue;
+
                     int d = manhattan(start_x, start_y, x, y);
                     int can_take = (res->amount > left) ? left : res->amount;
                     if (can_take == 0) continue;
+
                     double score = 0.0;
-                    if (selector == 0) score = -d; // Greedy: nearest
-                    else if (selector == 1) score = (double)(can_take * t_per) / (d+1); // Max profit per distance
-                    else if (selector == 2) {
-                        // KNN: find among K nearest, take max capacity
-                        static int kx[K_NEAREST], ky[K_NEAREST], kd[K_NEAREST], kn = 0;
-                        kn = 0;
-                        for (int yy = 0; yy < game_map.height; ++yy) for (int xx = 0; xx < game_map.width; ++xx) {
-                            Resource *r = &game_map.resources[yy][xx];
-                            if (r->amount > 0 && (r->type == res->type)) {
-                                int dd = manhattan(start_x, start_y, xx, yy);
-                                if (kn < K_NEAREST) { kx[kn]=xx; ky[kn]=yy; kd[kn]=dd; kn++; }
-                                else {
-                                    int max_idx = 0;
-                                    for (int j = 1; j < K_NEAREST; ++j) if (kd[j] > kd[max_idx]) max_idx = j;
-                                    if (dd < kd[max_idx]) { kx[max_idx]=xx; ky[max_idx]=yy; kd[max_idx]=dd; }
-                                }
-                            }
-                        }
-                        int max_cap = -1;
-                        for (int j = 0; j < kn; ++j) {
-                            Resource *rr = &game_map.resources[ky[j]][kx[j]];
-                            if (rr->amount > max_cap) { max_cap = rr->amount; best_x = kx[j]; best_y = ky[j]; best_type = res->type; }
-                        }
-                        if (max_cap > 0) { take = (max_cap > left) ? left : max_cap; }
-                        break;
-                    }
-                    if (selector != 2 && score > best_score) {
+                    if (selector == 0) score = -d;
+                    else if (selector == 1) score = (double)(can_take * t_per) / (d + 1);
+
+                    if (score > best_score) {
                         best_score = score;
-                        best_x = x; best_y = y; best_type = res->type;
+                        best_x = x; best_y = y;
+                        best_type = res->type;
                         take = can_take;
                     }
                 }
             }
         }
+
         if (best_x == -1 || take == 0) break;
 
         int drop_x, drop_y;
@@ -158,11 +141,15 @@ int villager_collect_knapsack(
             Resource *target = &game_map.resources[best_y][best_x];
             int canreally = (target->amount > take) ? take : target->amount;
             target->amount -= canreally;
-            ticket += canreally * ((best_type==CELL_GOLD)?TICKET_PER_GOLD : (best_type==CELL_WOOD)?TICKET_PER_WOOD : TICKET_PER_FOOD);
+            collectionEffort += canreally * ((best_type==CELL_GOLD)?TICKS_PER_GOLD_UNIT : (best_type==CELL_WOOD)?TICKS_PER_WOOD_UNIT : TICKS_PER_FOOD_UNIT);
             got = canreally;
             left -= canreally;
+
+            if (best_type == CELL_WOOD) *wood_collected += canreally;
+            else if (best_type == CELL_GOLD) *gold_collected += canreally;
+            else if (best_type == CELL_FOOD) *food_collected += canreally;
         }
-        // Log action for this tick
+
         int act_idx = action_counts[tid]++;
         tick_actions[tid][act_idx].villager_id = tid;
         tick_actions[tid][act_idx].action_idx = act_idx;
@@ -175,62 +162,88 @@ int villager_collect_knapsack(
         vx[tid] = drop_x; vy[tid] = drop_y;
         start_x = drop_x; start_y = drop_y;
     }
-    return ticket;
+
+    return collectionEffort;
 }
 
 // Simulation loop with logging per tick
 void run_strategy_simulation(
     int strategy_id,
-    int *total_ticket,
+    int *total_collectionEffort,
     int *used_ticks,
     long long *total_distance,
     int mpi_rank
 ) {
     int tick = 0, finished = 0;
-    int villager_x[MAX_VILLAGERS], villager_y[MAX_VILLAGERS];
-    int dist_sum[MAX_VILLAGERS] = {0};
+    int villager_x[NUMBER_OF_VILLAGERS], villager_y[NUMBER_OF_VILLAGERS];
+    int dist_sum[NUMBER_OF_VILLAGERS] = {0};
     int total_wood_local = 0;
     int total_gold_local = 0;
     int total_food_local = 0;
+    int total_collectionEffort_local = 0;
 
     int drop_x, drop_y;
     nearest_dropoff(game_map.width / 2, game_map.height / 2, &drop_x, &drop_y);
-    for (int i = 0; i < MAX_VILLAGERS; ++i) {
-        villager_x[i] = drop_x; villager_y[i] = drop_y;
+    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
+        villager_x[i] = drop_x;
+        villager_y[i] = drop_y;
     }
 
-    *total_ticket = 0; *used_ticks = 0; *total_distance = 0;
+    *total_collectionEffort = 0;
+    *used_ticks = 0;
+    *total_distance = 0;
     double t_start = MPI_Wtime();
 
     while (!finished) {
-        int round_ticket = 0;
-        VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
-        int action_counts[MAX_VILLAGERS] = {0};
+        int round_collectionEffort = 0;
+        VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
+        int action_counts[NUMBER_OF_VILLAGERS] = {0};
 
-        #pragma omp parallel for reduction(+:round_ticket)
-        for (int tid = 0; tid < MAX_VILLAGERS; ++tid) {
+        #pragma omp parallel for reduction(+:round_collectionEffort, total_wood_local, total_gold_local, total_food_local)
+        for (int tid = 0; tid < NUMBER_OF_VILLAGERS; ++tid) {
+            int wood = 0, gold = 0, food = 0;
+
             int t = villager_collect_knapsack(
                 tid, villager_x, villager_y, &dist_sum[tid], strategy_id,
-                tick_actions, action_counts
+                tick_actions, action_counts,
+                &wood, &gold, &food
             );
-            round_ticket += t;
+
+            round_collectionEffort += t;
+            total_wood_local += wood;
+            total_gold_local += gold;
+            total_food_local += food;
         }
-        total_ticket_local += round_ticket;
+
+        total_collectionEffort_local += round_collectionEffort;
 
         save_tick_state(FOLDER, strategy_id, tick, villager_x, villager_y, tick_actions, action_counts);
+
+        save_map_txt_with_villagers("output/ticks", strategy_id, tick, villager_x, villager_y);
+        save_tick_json_state("output/simulation", strategy_id, tick, villager_x, villager_y,
+                     total_wood_local, total_gold_local, total_food_local, 
+                     total_distance, total_collectionEffort_local,
+                     tick_actions, action_counts);
+
+
+
         tick++;
 
         if (total_wood_local >= GOAL_WOOD &&
             total_gold_local >= GOAL_GOLD &&
             total_food_local >= GOAL_FOOD) {
             finished = 1;
-}
+        }
     }
+
     double t_end = MPI_Wtime();
     *used_ticks = tick;
-    for (int i = 0; i < MAX_VILLAGERS; ++i)
+    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i)
         *total_distance += dist_sum[i];
-    *total_ticket = total_ticket_local;
-    printf("[Rank %d] Finished: Ticks=%d, Time=%.3fs, Ticket=%d, TotalDist=%lld\n",
-        mpi_rank, *used_ticks, t_end-t_start, *total_ticket, *total_distance);
+    *total_collectionEffort = total_collectionEffort_local;
+
+    printf("[Rank %d] Finished: Ticks=%d, Time=%.3fs, collectionEffort=%d, TotalDist=%lld\n",
+    mpi_rank, *used_ticks, t_end - t_start, *total_collectionEffort, *total_distance);
+    printf("[Rank %d] Resources Collected → Wood: %d | Gold: %d | Food: %d\n",
+        mpi_rank, total_wood_local, total_gold_local, total_food_local);
 }

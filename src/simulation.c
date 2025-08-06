@@ -5,6 +5,7 @@
 #include "map.h"
 #include "villager.h"
 #include "vrp.h"
+#include "status_report.h"
 
 int total_gold = 0;
 int total_wood = 0;
@@ -17,12 +18,15 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if (rank == 0) {
-        generate_random_map();
+        clear_output_folders();
+
+        //generate_random_map();
         
         // Uncomment this to load from a file instead of generating randomly
-        //load_map_from_file("output/map/initial_map.txt");
+        load_map_from_file("output/map/initial_map.txt");
 
         printf("[RANK %d] Map and villagers generated. Total: %d\n", rank, villager_count);
+        
     }
     
     // Broadcast the game map to all processes
@@ -34,12 +38,12 @@ int main(int argc, char** argv) {
 
     if (rank >= 1 && rank <= 3) {
         int strategy_id = rank - 1;
-        int total_ticket = 0, used_ticks = 0;
+        int total_collection_effort = 0, used_ticks = 0;
         long long total_distance = 0;
 
-        run_strategy_simulation(strategy_id, &total_ticket, &used_ticks, &total_distance, rank);
+        run_strategy_simulation(strategy_id, &total_collection_effort, &used_ticks, &total_distance, rank);
 
-        StrategyResult result = {strategy_id, total_ticket, used_ticks, total_distance};
+        StrategyResult result = {strategy_id, total_collection_effort, used_ticks, total_distance};
         MPI_Send(&result, sizeof(result), MPI_BYTE, 0, 0, MPI_COMM_WORLD);
     }
 
@@ -54,9 +58,9 @@ int main(int argc, char** argv) {
                 (results[i].strategy_id == 0) ? "Greedy Nearest" :
                 (results[i].strategy_id == 1) ? "Max Profit/Distance" :
                 "Optimal Permutation";
-            printf("[Strategy %d: %s]\n  Tickets: %d\n  Ticks: %d\n  Total Distance: %lld\n\n",
+            printf("[Strategy %d: %s]\n  Collection efforts: %d\n  Ticks: %d\n  Total Distance: %lld\n\n",
                 results[i].strategy_id, name,
-                results[i].total_ticket,
+                results[i].total_collection_effort,
                 results[i].used_ticks,
                 results[i].total_distance
             );

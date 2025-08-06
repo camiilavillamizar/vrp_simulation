@@ -5,7 +5,7 @@
 
 typedef struct {
   int strategy_id;
-  int total_ticket;
+  int total_collection_effort;
   int used_ticks;
   long long total_distance;
 } StrategyResult;
@@ -21,7 +21,7 @@ typedef struct {
 
 void run_strategy_simulation(
   int strategy_id,
-  int *total_ticket,
+  int *total_collection_effort,
   int *used_ticks,
   long long *total_distance,
   int mpi_rank
@@ -30,8 +30,8 @@ void run_strategy_simulation(
 void save_tick_state(
     const char *folder, int strategy_id, int tick,
     int villager_x[], int villager_y[],
-    VillagerAction tick_actions[MAX_VILLAGERS][VILLAGER_CAPACITY],
-    int action_counts[MAX_VILLAGERS]
+    VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY],
+    int action_counts[NUMBER_OF_VILLAGERS]
 );
 
 #endif

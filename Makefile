@@ -8,7 +8,7 @@ OUTLINE_DIR = output
 
 # === Build Target ===
 $(BIN): $(SRC)
-	$(CC) $(CFLAGS) $(SRC) -o $(BIN) -lm
+	$(CC) $(CFLAGS) $(SRC) -o $(BIN) -lm -ljson-c
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -21,6 +21,4 @@ clean:
 run: $(BIN)
 	mpirun --allow-run-as-root -np 4 ./$(BIN)
 
-# === Convert PPM to PNG ===
-convert: $(OUTLINE_DIR)/map/initial_map.ppm
-	magick $(OUTLINE_DIR)/map/initial_map.ppm $(OUTLINE_DIR)/map/initial_map.png
+

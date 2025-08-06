@@ -1,12 +1,26 @@
 #ifndef STATUS_REPORT_H
 #define STATUS_REPORT_H
 
-#include "game_rules.h"
-#include "villager.h"
-#include "map.h"
+#include "vrp.h"
 
-//Prints a textual report of the current simulation state
-//to stdout or a log file (one line per villager + resource + building summary)
-void print_status_report(int tick);
+void save_map_txt_with_villagers(
+    const char* folder,
+    int strategy_id,
+    int tick,
+    int villager_x[],
+    int villager_y[]
+);
 
-#endif
+void save_tick_json_state(
+    const char* folder, int strategy_id, int tick,
+    int villager_x[], int villager_y[],
+    int total_wood, int total_gold, int total_food,
+    long long* total_distance_ptr,
+    int collectionEffort,
+    VillagerAction tick_actions[][VILLAGER_CAPACITY],
+    int action_counts[]
+);
+
+void clear_output_folders();
+
+#endif // STATUS_REPORT_H

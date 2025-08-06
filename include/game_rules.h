@@ -48,5 +48,7 @@
 #define GOAL_GOLD 100
 #define GOAL_FOOD 100
 
+#define NUMBER_OF_VILLAGERS 3
+
 
 #endif

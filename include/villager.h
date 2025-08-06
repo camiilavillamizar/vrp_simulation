@@ -12,7 +12,17 @@ typedef struct {
     int task;               // Current task status (e.g., idle, moving, gathering)
     int target_x, target_y; // Target position for current task
     int ticks_remaining;    // Ticks left to complete current task (for future expansions)
+    int resource_type;      //The type of resource the villager is currently gathering
+    int target_found;
 } Villager;
+
+enum TaskStatus {
+    TASK_IDLE = 0,
+    TASK_MOVING = 1,
+    TASK_GATHERING = 2,
+    TASK_DELIVERING = 3
+};
+
 
 // Global array holding all villagers in the game
 extern Villager villagers[MAX_VILLAGERS];
