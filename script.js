@@ -1,6 +1,16 @@
 const CELL_EMOJI = {
-    0: "⬜️", 1: "🪙", 2: "🍖", 3: "🌲", 4: "🏠",
-    5: "🏰", 6: "🚩", 7: "🛖", 99: "👨‍🌾"
+    0: "⬜️",     // Empty
+    1: "🪙",     // Gold
+    2: "🍖",     // Food
+    3: "🌲",     // Wood
+    4: "🏠",     // Dropoff
+    5: "🏰",     // Town Center
+    6: "🚩",     // Enemy
+    7: "🛖",     // Own Building
+    10: "🟫",    // Wood agotado
+    11: "🟥",    // Food agotado
+    12: "🟨",    // Gold agotado
+    99: "👨‍🌾"    // Villager
 };
 
 let currentStrategy = null;

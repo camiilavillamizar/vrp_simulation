@@ -11,6 +11,10 @@
 #define CELL_ENEMY_BUILD   6   //Enemy building (not used for now)
 #define CELL_FRIENDLY_BLD  7   //Friendly building
 
+#define CELL_WOOD_EMPTY 10
+#define CELL_FOOD_EMPTY 11
+#define CELL_GOLD_EMPTY 12
+
 #define CELL_VILLAGER     -1   //Villager (may be rendered separately)
 
 // ===== VILLAGER LOGIC =====

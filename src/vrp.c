@@ -183,6 +183,21 @@ int villager_collect_knapsack(
             int canreally = (target->amount > take) ? take : target->amount;
             target->amount -= canreally;
 
+            if (target->amount == 0) {
+                if(target->type == CELL_WOOD){
+
+                    game_map.cells[best_y][best_x] = CELL_WOOD_EMPTY; 
+
+                } else if (target->type == CELL_FOOD){
+                    game_map.cells[best_y][best_x] = CELL_FOOD_EMPTY; 
+
+                } else if (target->type == CELL_GOLD){
+                    game_map.cells[best_y][best_x] = CELL_GOLD_EMPTY; 
+
+                }
+                 
+            }
+
             collectionEffort += canreally * (
                 (best_type == CELL_GOLD) ? TICKS_PER_GOLD_UNIT :
                 (best_type == CELL_WOOD) ? TICKS_PER_WOOD_UNIT :
