@@ -17,8 +17,18 @@ void save_map_txt_with_villagers(
     const char* folder, int strategy_id, int tick,
     int villager_x[], int villager_y[]
 ) {
+
+    // Crear subcarpeta output/ticks/strategyX si no existe
+    char subfolder[256];
+    snprintf(subfolder, sizeof(subfolder), "%s/strategy%d", folder, strategy_id);
+    struct stat st = {0};
+    if (stat(subfolder, &st) == -1) {
+        mkdir(subfolder, 0700);
+    }
+
+    // Ahora generamos el path completo al archivo tick_XXX.txt
     char path[256];
-    snprintf(path, sizeof(path), "%s/tick_strategy%d_%03d.txt", folder, strategy_id, tick);
+    snprintf(path, sizeof(path), "%s/strategy%d/tick_%03d.txt", folder, strategy_id, tick);
     FILE* f = fopen(path, "w");
     if (!f) return;
 
@@ -52,7 +62,9 @@ void save_tick_json_state(
     int action_counts[]
 ) {
     char path[256];
-    snprintf(path, sizeof(path), "%s/tick_strategy%d_%03d.json", folder, strategy_id, tick);
+    snprintf(path, sizeof(path), "%s/strategy%d", folder, strategy_id);
+    mkdir(path, 0700);  // Crear subcarpeta strategyX si no existe aún
+    snprintf(path, sizeof(path), "%s/strategy%d/tick_%03d.json", folder, strategy_id, tick);
     FILE* f = fopen(path, "w");
     if (!f) return;
 
@@ -111,6 +123,36 @@ void save_tick_json_state(
     json_object_put(root);
 }
 
+// Recursively delete folder contents and the folder itself
+void delete_folder_recursive(const char *path) {
+    DIR *dir = opendir(path);
+    if (!dir) return;
+
+    struct dirent *entry;
+    char fullpath[512];
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
+
+        struct stat st;
+        if (stat(fullpath, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                // Recursively delete subfolder
+                delete_folder_recursive(fullpath);
+                rmdir(fullpath);
+            } else {
+                unlink(fullpath); // Delete file
+            }
+        }
+    }
+
+    closedir(dir);
+    rmdir(path); // Finally delete the empty folder
+}
+
 
 void clear_output_folders() {
     const char* folders[] = {"output/ticks", "output/simulation"};
@@ -119,33 +161,13 @@ void clear_output_folders() {
     for (int i = 0; i < folder_count; ++i) {
         const char* folder = folders[i];
 
-        // Create the folder if it doesn't exist
         struct stat st = {0};
-        if (stat(folder, &st) == -1) {
-            mkdir(folder, 0700);
-            continue;
+        if (stat(folder, &st) == 0) {
+            // Folder exists → delete it fully
+            delete_folder_recursive(folder);
         }
 
-        // Open directory
-        DIR* dir = opendir(folder);
-        if (!dir) continue;
-
-        struct dirent* entry;
-        char filepath[512];
-        while ((entry = readdir(dir)) != NULL) {
-            // Skip "." and ".."
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
-
-            snprintf(filepath, sizeof(filepath), "%s/%s", folder, entry->d_name);
-
-            unlink(filepath); // Remove file
-
-            // if (unlink(filepath) != 0) {
-            //     perror("Error deleting file");
-            // }
-        }
-
-        closedir(dir);
+        // Recreate empty folder
+        mkdir(folder, 0700);
     }
 }
