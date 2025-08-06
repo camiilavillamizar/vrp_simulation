@@ -100,29 +100,70 @@ int villager_collect_knapsack(
         int best_x = -1, best_y = -1, best_type = -1, take = 0;
         double best_score = -1e9;
 
-        for (int y = 0; y < game_map.height; ++y) {
-            for (int x = 0; x < game_map.width; ++x) {
-                Resource *res = &game_map.resources[y][x];
-                if (res->amount > 0) {
-                    int t_per = 0;
-                    if (res->type == CELL_GOLD) t_per = TICKS_PER_GOLD_UNIT;
-                    else if (res->type == CELL_WOOD) t_per = TICKS_PER_WOOD_UNIT;
-                    else if (res->type == CELL_FOOD) t_per = TICKS_PER_FOOD_UNIT;
-                    else continue;
+        if (selector == 2) {
+            // Estrategia 2: K Nearest + más cantidad
+            const int K = 5;
+            int kx[K], ky[K], kd[K], kn = 0;
 
-                    int d = manhattan(start_x, start_y, x, y);
-                    int can_take = (res->amount > left) ? left : res->amount;
-                    if (can_take == 0) continue;
+            for (int y = 0; y < game_map.height; ++y) {
+                for (int x = 0; x < game_map.width; ++x) {
+                    Resource *res = &game_map.resources[y][x];
+                    if (res->amount > 0 &&
+                        (res->type == CELL_GOLD || res->type == CELL_WOOD || res->type == CELL_FOOD)) {
 
-                    double score = 0.0;
-                    if (selector == 0) score = -d;
-                    else if (selector == 1) score = (double)(can_take * t_per) / (d + 1);
+                        int d = manhattan(start_x, start_y, x, y);
+                        if (kn < K) {
+                            kx[kn] = x; ky[kn] = y; kd[kn] = d; kn++;
+                        } else {
+                            int max_idx = 0;
+                            for (int j = 1; j < K; ++j)
+                                if (kd[j] > kd[max_idx]) max_idx = j;
+                            if (d < kd[max_idx]) {
+                                kx[max_idx] = x; ky[max_idx] = y; kd[max_idx] = d;
+                            }
+                        }
+                    }
+                }
+            }
 
-                    if (score > best_score) {
-                        best_score = score;
-                        best_x = x; best_y = y;
-                        best_type = res->type;
-                        take = can_take;
+            int max_amt = -1;
+            for (int j = 0; j < kn; ++j) {
+                Resource *res = &game_map.resources[ky[j]][kx[j]];
+                if (res->amount > max_amt) {
+                    max_amt = res->amount;
+                    best_x = kx[j]; best_y = ky[j]; best_type = res->type;
+                }
+            }
+
+            if (max_amt > 0) {
+                take = (max_amt > left) ? left : max_amt;
+            }
+
+        } else {
+            // Estrategias 0 y 1
+            for (int y = 0; y < game_map.height; ++y) {
+                for (int x = 0; x < game_map.width; ++x) {
+                    Resource *res = &game_map.resources[y][x];
+                    if (res->amount > 0 &&
+                        (res->type == CELL_GOLD || res->type == CELL_WOOD || res->type == CELL_FOOD)) {
+
+                        int t_per = (res->type == CELL_GOLD) ? TICKS_PER_GOLD_UNIT :
+                                    (res->type == CELL_WOOD) ? TICKS_PER_WOOD_UNIT :
+                                                               TICKS_PER_FOOD_UNIT;
+
+                        int d = manhattan(start_x, start_y, x, y);
+                        int can_take = (res->amount > left) ? left : res->amount;
+                        if (can_take == 0) continue;
+
+                        double score = (selector == 0) ? -d :
+                                       ((double)(can_take * t_per)) / (d + 1);
+
+                        if (score > best_score) {
+                            best_score = score;
+                            best_x = x; best_y = y;
+                            best_type = res->type;
+                            take = can_take;
+                        }
                     }
                 }
             }
@@ -141,7 +182,12 @@ int villager_collect_knapsack(
             Resource *target = &game_map.resources[best_y][best_x];
             int canreally = (target->amount > take) ? take : target->amount;
             target->amount -= canreally;
-            collectionEffort += canreally * ((best_type==CELL_GOLD)?TICKS_PER_GOLD_UNIT : (best_type==CELL_WOOD)?TICKS_PER_WOOD_UNIT : TICKS_PER_FOOD_UNIT);
+
+            collectionEffort += canreally * (
+                (best_type == CELL_GOLD) ? TICKS_PER_GOLD_UNIT :
+                (best_type == CELL_WOOD) ? TICKS_PER_WOOD_UNIT :
+                                           TICKS_PER_FOOD_UNIT
+            );
             got = canreally;
             left -= canreally;
 

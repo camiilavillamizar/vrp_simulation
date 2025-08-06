@@ -141,9 +141,9 @@ void clear_output_folders() {
 
             unlink(filepath); // Remove file
 
-            if (unlink(filepath) != 0) {
-                perror("Error deleting file");
-            }
+            // if (unlink(filepath) != 0) {
+            //     perror("Error deleting file");
+            // }
         }
 
         closedir(dir);
