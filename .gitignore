@@ -58,3 +58,4 @@ dkms.conf
 
 /output/ticks/
 /output/simulation/
+/output/logs/
