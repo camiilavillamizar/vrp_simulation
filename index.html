@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Strategy Viewer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2>Map Replay Viewer</h2>
+    <div id="controls">
+        <button onclick="selectStrategy(0)">Strategy 0</button>
+        <button onclick="selectStrategy(1)">Strategy 1</button>
+        <button onclick="selectStrategy(2)">Strategy 2</button>
+    </div>
+    <div id="info-bar">
+        <span id="tick-counter">Tick = 0</span>
+        <span id="strategy-label">No strategy selected</span>
+        <span id="right-info"></span>
+    </div>
+    <div id="map-area">Loading...</div>
+    <script src="script.js"></script>
+</body>
+</html>

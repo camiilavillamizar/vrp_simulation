@@ -1,0 +1,31 @@
+body {
+    background: #f8f8f8;
+    font-family: sans-serif;
+    padding: 20px;
+    margin: 0;
+}
+
+#map-area {
+    font-size: 20px;
+    font-family: monospace;
+    white-space: pre;
+    line-height: 1;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ccc;
+    display: inline-block;
+    margin-top: 20px;
+}
+
+#controls {
+    margin: 10px 0;
+}
+
+#info-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 14px;
+    background: #eee;
+    padding: 5px 10px;
+}
