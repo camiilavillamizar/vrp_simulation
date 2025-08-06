@@ -11,9 +11,6 @@
 #include <omp.h>
 #include <mpi.h>
 
-#define FOLDER "output/logs"
-#define MAX_DROPOFF 100
-#define K_NEAREST 5
 
 // Manhattan distance helper
 static inline int manhattan(int x1, int y1, int x2, int y2) {
@@ -107,11 +104,11 @@ int villager_collect_knapsack(
             needed_food = (*total_food_collected < GOAL_FOOD);
         }
 
-        printf("[Tick %d][Villager %d] Needs → Wood: %d, Gold: %d, Food: %d\n",
-               tick, tid, needed_wood, needed_gold, needed_food);
+        // printf("[Tick %d][Villager %d] Needs → Wood: %d, Gold: %d, Food: %d\n",
+        //        tick, tid, needed_wood, needed_gold, needed_food);
 
         if (!needed_wood && !needed_gold && !needed_food) {
-            printf("[Tick %d][Villager %d] All goals met, skipping turn.\n", tick, tid);
+            // printf("[Tick %d][Villager %d] All goals met, skipping turn.\n", tick, tid);
             break;
         }
 
@@ -150,12 +147,12 @@ int villager_collect_knapsack(
         }
 
         if (best_x == -1) {
-            printf("[Tick %d][Villager %d] No suitable resource found.\n", tick, tid);
+            // printf("[Tick %d][Villager %d] No suitable resource found.\n", tick, tid);
             break;
         }
 
         if (take == 0) {
-            printf("[Tick %d][Villager %d] Found resource but can't take any.\n", tick, tid);
+            // printf("[Tick %d][Villager %d] Found resource but can't take any.\n", tick, tid);
             break;
         }
 
@@ -195,11 +192,11 @@ int villager_collect_knapsack(
             else if (best_type == CELL_FOOD) *total_food_collected += canreally;
         }
 
-        printf("[Tick %d][Villager %d] Collected %d of %s at (%d, %d)\n",
-               tick, tid, got,
-               (best_type == CELL_WOOD) ? "wood" :
-               (best_type == CELL_GOLD) ? "gold" : "food",
-               best_x, best_y);
+        // printf("[Tick %d][Villager %d] Collected %d of %s at (%d, %d)\n",
+        //        tick, tid, got,
+        //        (best_type == CELL_WOOD) ? "wood" :
+        //        (best_type == CELL_GOLD) ? "gold" : "food",
+        //        best_x, best_y);
 
         int act_idx = action_counts[tid]++;
         tick_actions[tid][act_idx].villager_id = tid;
@@ -228,7 +225,7 @@ void run_strategy_simulation(
     int mpi_rank
 ) {
 
-    printf("[Rank %d] Starting simulation with strategy %d...\n", mpi_rank, strategy_id);
+    // printf("[Rank %d] Starting simulation with strategy %d...\n", mpi_rank, strategy_id);
     int tick = 0, finished = 0;
     int villager_x[NUMBER_OF_VILLAGERS], villager_y[NUMBER_OF_VILLAGERS];
     for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
@@ -248,8 +245,8 @@ void run_strategy_simulation(
     double t_start = MPI_Wtime();
 
     while (!finished) {
-        printf("[Tick %d] START → Wood: %d | Gold: %d | Food: %d\n",
-            tick, total_wood_local, total_gold_local, total_food_local);
+        // printf("[Tick %d] START → Wood: %d | Gold: %d | Food: %d\n",
+        //     tick, total_wood_local, total_gold_local, total_food_local);
 
         int round_collectionEffort = 0;
         VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
@@ -272,19 +269,20 @@ void run_strategy_simulation(
 
         save_tick_state(FOLDER, strategy_id, tick, villager_x, villager_y, tick_actions, action_counts);
         save_map_txt_with_villagers("output/ticks", strategy_id, tick, villager_x, villager_y);
-        // Calcular distancia total acumulada hasta este tick
+
+        //Calculating total distance accoumulatad till this tick  
         long long dist_sum_tick = 0;
         for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i)
             dist_sum_tick += dist_sum[i];
 
         save_tick_json_state("output/simulation", strategy_id, tick, villager_x, villager_y,
                     total_wood_local, total_gold_local, total_food_local,
-                    &dist_sum_tick,  // 👈 ahora sí está actualizado
+                    &dist_sum_tick,  
                     total_collectionEffort_local,
                     tick_actions, action_counts);
 
-        printf("[Tick %d] END → Wood: %d | Gold: %d | Food: %d\n",
-            tick, total_wood_local, total_gold_local, total_food_local);
+        // printf("[Tick %d] END → Wood: %d | Gold: %d | Food: %d\n",
+        //     tick, total_wood_local, total_gold_local, total_food_local);
 
         tick++;
 

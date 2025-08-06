@@ -16,6 +16,15 @@ typedef struct {
     int target_found;
 } Villager;
 
+// Log for each villager's action in a tick
+typedef struct {
+  int villager_id;      // Villager ID
+  int action_idx;       // The order of resource collection in this tick (0,1,...)
+  int resource_type;    // CELL_GOLD, CELL_WOOD, CELL_FOOD
+  int x, y;             // Resource coordinate
+  int amount;           // Amount collected this action
+} VillagerAction;
+
 enum TaskStatus {
     TASK_IDLE = 0,
     TASK_MOVING = 1,
@@ -30,16 +39,25 @@ extern Villager villagers[MAX_VILLAGERS];
 // Number of villagers currently active in the game
 extern int villager_count;
 
-// Creates a new villager at the specified (x, y) location
+/**
+ * Creates a villager at the given position.
+ * Returns 1 if created successfully, 0 if limit reached.
+ */
 int create_villager(int x, int y);
 
-// Initializes the starting villagers near the town center
+/**
+ * Initializes villagers around the town center at (town_x, town_y).
+ */
 void initialize_villagers(int town_x, int town_y);
 
-// Saves the state of all villagers to a file
+/**
+ * Saves all current villagers to a file.
+ */
 void save_villagers_to_file(const char *filename);
 
-// Loads the state of villagers from a file
+/**
+ * Loads villagers from a file and places them back into the map.
+ */
 void load_villagers_from_file(const char *filename);
 
 #endif

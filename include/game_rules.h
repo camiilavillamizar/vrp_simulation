@@ -15,7 +15,7 @@
 #define CELL_FOOD_EMPTY 11
 #define CELL_GOLD_EMPTY 12
 
-#define CELL_VILLAGER     -1   //Villager (may be rendered separately)
+#define CELL_VILLAGER     -1   //Villager (is rendered separately)
 
 // ===== VILLAGER LOGIC =====
 #define MAX_VILLAGERS         25

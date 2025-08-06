@@ -1,19 +1,25 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "game_rules.h"
+//These globals are used to track total resources (can be external if defined elsewhere)
+extern int total_gold;
+extern int total_wood;
+extern int total_food;
 
-// Initializes the global simulation state (resources, age, counters, etc.)
-void initialize_simulation(void);
+typedef struct {
+    int strategy_id;                // ID of the strategy (0, 1, 2...)
+    int total_collection_effort;   // Total effort spent collecting resources
+    int used_ticks;                // Number of ticks used by the strategy
+    long long total_distance;      // Total distance traveled by all villagers
+    double elapsed_time;           // Execution time in seconds (measured with MPI_Wtime)
+} StrategyResult;
 
-// Runs one tick of the simulation loop (villager actions, movement, etc.)
-void simulate_tick(void);
-
-// Saves the current map state to a tick file for visualization
-void save_tick_state(int tick);
-
-// Returns true if the player has met the win condition (e.g., 1000 of each resource)
-int is_game_over(void);
-void clean_tick_folder(const char *folder);
+/**
+ * Initializes the simulation environment, including MPI, map loading, and broadcasting data.
+ * Runs the appropriate strategy depending on the MPI rank and gathers results in rank 0.
+ * 
+ * This function is implemented in simulation.c and serves as the entry point of the program.
+ */
+int main(int argc, char** argv);
 
 #endif // SIMULATION_H

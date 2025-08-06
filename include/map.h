@@ -2,9 +2,9 @@
 #ifndef MAP_H
 #define MAP_H
 
-#include "game_rules.h"    // Contains constants like MAP_WIDTH, MAP_HEIGHT, resource capacities
-#include "map_visuals.h"   // (Optional) For rendering or visualization
-#include "resource.h"      // Resource struct (type and amount) definition
+#include "game_rules.h"    //Contains constants like MAP_WIDTH, MAP_HEIGHT, resource capacities
+#include "map_visuals.h"   //For rendering or visualization
+#include "resource.h"      //Eesource struct (type and amount) definition
 
 // Map struct represents the game world grid and associated resources
 typedef struct {

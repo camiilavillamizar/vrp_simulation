@@ -18,7 +18,7 @@ void save_map_txt_with_villagers(
     int villager_x[], int villager_y[]
 ) {
 
-    // Crear subcarpeta output/ticks/strategyX si no existe
+    //Creating subfolder output/ticks/strategyX if not exists
     char subfolder[256];
     snprintf(subfolder, sizeof(subfolder), "%s/strategy%d", folder, strategy_id);
     struct stat st = {0};
@@ -26,7 +26,7 @@ void save_map_txt_with_villagers(
         mkdir(subfolder, 0700);
     }
 
-    // Ahora generamos el path completo al archivo tick_XXX.txt
+    //Generating the complete path
     char path[256];
     snprintf(path, sizeof(path), "%s/strategy%d/tick_%03d.txt", folder, strategy_id, tick);
     FILE* f = fopen(path, "w");
@@ -56,7 +56,7 @@ void save_tick_json_state(
 ) {
     char path[256];
     snprintf(path, sizeof(path), "%s/strategy%d", folder, strategy_id);
-    mkdir(path, 0700);  // Crear subcarpeta strategyX si no existe aún
+    mkdir(path, 0700);  // Creating subfolder
     snprintf(path, sizeof(path), "%s/strategy%d/tick_%03d.json", folder, strategy_id, tick);
     FILE* f = fopen(path, "w");
     if (!f) return;
@@ -81,7 +81,7 @@ void save_tick_json_state(
         json_object_object_add(v, "x", json_object_new_int(villager_x[i]));
         json_object_object_add(v, "y", json_object_new_int(villager_y[i]));
 
-        // Acciones
+        // actions
         json_object *actions_array = json_object_new_array();
         for (int j = 0; j < action_counts[i]; ++j) {
             VillagerAction act = tick_actions[i][j];
@@ -101,7 +101,7 @@ void save_tick_json_state(
         }
         json_object_object_add(v, "actions", actions_array);
 
-        // 👣 Path
+        // Path
         json_object *path_array = json_object_new_array();
 
         if (action_counts[i] > 0) {
@@ -172,7 +172,7 @@ void delete_folder_recursive(const char *path) {
     }
 
     closedir(dir);
-    rmdir(path); // Finally delete the empty folder
+    rmdir(path); // Delete the empty folder
 }
 
 
@@ -185,11 +185,11 @@ void clear_output_folders() {
 
         struct stat st = {0};
         if (stat(folder, &st) == 0) {
-            // Folder exists → delete it fully
+            // Folder exists -> delete it fully
             delete_folder_recursive(folder);
         }
 
-        // Recreate empty folder
+        //Recreate empty folder
         mkdir(folder, 0700);
     }
 }

@@ -20,74 +20,93 @@ let animTimer = null;
 const TICK_DELAY = 500;
 
 function selectStrategy(id) {
+    // Set the current strategy based on the selected ID (e.g., strategy0, strategy1)
     currentStrategy = `strategy${id}`;
+
+    // Update the strategy label in the UI
     document.getElementById("strategy-label").textContent = `Selected: ${currentStrategy}`;
+
+    // Load all tick data (JSON files) related to this strategy
     loadAllTicks();
+
+    //Show Strategy buttons
+    document.getElementById("tick-controls").classList.remove("hidden");
 }
 
-async function loadAllTicks() {
-    tickData = [];
-    let index = 0;
-    let consecutiveFails = 0;
 
-    while (consecutiveFails < 3) { // permite 3 fallos antes de parar
-        const padded = index.toString().padStart(3, '0');
+async function loadAllTicks() {
+    tickData = [];                  // Reset tick data array
+    let index = 0;                  // Start from tick_000.json
+    let consecutiveFails = 0;       // To count how many files were not found in a row
+
+    while (consecutiveFails < 3) {  // Allow up to 3 missing files before stopping
+        const padded = index.toString().padStart(3, '0'); // Format as tick_000, tick_001...
         const url = `../output/simulation/${currentStrategy}/tick_${padded}.json`;
 
         try {
             const resp = await fetch(url);
+
+            // If the file is missing (e.g. 404), count the failure and skip to next
             if (!resp.ok) {
                 consecutiveFails++;
                 index++;
                 continue;
             }
-            const json = await resp.json();
-            tickData.push(json);
+
+            const json = await resp.json();  // Parse JSON content
+            tickData.push(json);             // Add to array
             index++;
-            consecutiveFails = 0; // reset al encontrar uno válido
+            consecutiveFails = 0;            // Reset fails if fetch was successful
+
         } catch (err) {
-            console.log("Fetch error:", err);
+            console.log("Fetch error:", err);  // For network or unexpected errors
             break;
         }
     }
 
-    currentTick = 0;
-    renderTick(0);
+    currentTick = 0;         // Reset to the first tick
+    renderTick(0);           // Show first tick on screen
 
-    console.log(`✅ Loaded ${tickData.length} ticks`);
-
+    console.log(`Loaded ${tickData.length} ticks`);
 }
+
 
 
 async function renderTick(index) {
+    // If the index is out of bounds, do nothing
     if (!tickData[index]) return;
 
-    await updateMap(index);           // Asegura que el mapa se cargue antes de continuar
+    // Load and display the map for the given tick
+    await updateMap(index);
+
+    // Update text/labels showing resource stats, villager info, etc.
     updateInfoPanel(index);
 }
 
-
-
-
 async function loadTickMap(strategy, tickIndex) {
+    // Format tick index as 3 digits (e.g., 001, 002)
     const padded = tickIndex.toString().padStart(3, '0');
     const path = `output/ticks/${strategy}/tick_${padded}.txt`;
 
     try {
+        // Try to fetch the map text file
         const response = await fetch(path);
         if (!response.ok) {
             console.warn("Could not load map txt:", path);
             return null;
         }
 
+        // Read and parse the map into a 2D array of numbers
         const text = await response.text();
         const rows = text.trim().split('\n');
         const map = rows.map(row => {
             return row.trim().split(/\s+/).map(cell => {
+                // Mark villagers (V) as 99 for emoji display
                 if (cell === "V") return 99;
                 return parseInt(cell);
             });
         });
+
         return map;
 
     } catch (err) {
@@ -96,15 +115,17 @@ async function loadTickMap(strategy, tickIndex) {
     }
 }
 
+
 async function updateMap(tickIndex) {
     const strategy = currentStrategy;
-    const map = await loadTickMap(strategy, tickIndex);
+    const map = await loadTickMap(strategy, tickIndex); // Load map for this tick
 
     let output = "";
 
     if (!map) {
-        output = "⚠️ Map not found for tick " + tickIndex;
+        output = "Map not found for tick " + tickIndex;
     } else {
+        // Convert the map to emoji characters for visual display
         for (let y = 0; y < map.length; y++) {
             for (let x = 0; x < map[y].length; x++) {
                 const val = map[y][x];
@@ -114,20 +135,26 @@ async function updateMap(tickIndex) {
         }
     }
 
+    // Show the map in the UI
     document.getElementById("map-area").textContent = output;
 }
+
 
 
 function updateInfoPanel(tickIndex) {
     const tick = tickData[tickIndex];
     if (!tick) return;
 
+    // Update tick number
     document.getElementById("tick-counter").textContent = `Tick = ${tick.tick}`;
 
     const rightInfo = document.getElementById("right-info");
+
+    // Display resources and performance stats
     rightInfo.innerHTML = `👨‍🌾 x ${tick.villagers.length} | 🌲 ${tick.resources.wood} 🪙 ${tick.resources.gold} 🍖 ${tick.resources.food}<br>`;
     rightInfo.innerHTML += `Effort: ${tick.statistics.collectionEffort} | Dist: ${tick.statistics.totalDistance}<br>`;
 
+    // Show action of each villager (just first action)
     tick.villagers.forEach(v => {
         if (v.actions.length > 0) {
             rightInfo.innerHTML += `V${v.id}: ${v.actions[0]}<br>`;
@@ -137,29 +164,29 @@ function updateInfoPanel(tickIndex) {
 
 
 function startAnim() {
-    console.log("🟢 startAnim called");
+    console.log("startAnim called");
 
+    // Don't start if already running or not enough ticks
     if (animTimer !== null || tickData.length <= 1) {
-        console.log("⚠️ Not enough ticks to animate or animation already running");
+        console.log("Not enough ticks to animate or animation already running");
         return;
     }
 
-    // ✅ Hacemos async la función step
+    // Async animation step function
     async function step() {
         if (currentTick >= tickData.length) {
-            console.log("✅ Animation finished");
+            console.log("Animation finished");
             animTimer = null;
             return;
         }
 
-        console.log(`🔄 Rendering tick ${currentTick}`);
-        await renderTick(currentTick++); // ✅ Espera a que termine antes de continuar
-        animTimer = setTimeout(() => step(), TICK_DELAY);
+        console.log(`Rendering tick ${currentTick}`);
+        await renderTick(currentTick++); // Wait for rendering to finish
+        animTimer = setTimeout(() => step(), TICK_DELAY); // Schedule next tick
     }
 
-    step(); // Lanza el primer paso
+    step(); // Start animation
 }
-
 
 function goToNextTick() {
     if (currentStrategy === null || tickData.length === 0) return;
@@ -178,29 +205,30 @@ function goToPreviousTick() {
         renderTick(currentTick);
     }
 }
+
 async function playVillagerPaths() {
     if (!tickData[currentTick]) return;
 
     const strategy = currentStrategy;
     const tickInfo = tickData[currentTick];
-    const steps = 3;
+    const steps = 3; // Number of steps to simulate movement
 
     for (let step = 0; step < steps; step++) {
         const map = await loadTickMap(strategy, currentTick);
         if (!map) {
-            document.getElementById("map-area").textContent = "⚠️ No se pudo cargar el mapa.";
+            document.getElementById("map-area").textContent = "Could not load map.";
             return;
         }
 
-        // Insertar aldeanos en su posición según el paso actual
+        // Place villagers on the map based on their current path step
         tickInfo.villagers.forEach(villager => {
-            const [x, y] = villager.path[step];  // 👈 posición en este paso
+            const [x, y] = villager.path[step];
             if (map[y] && map[y][x] !== undefined) {
-                map[y][x] = 99;  // código para "👨‍🌾"
+                map[y][x] = 99; // 99 = villager emoji
             }
         });
 
-        // Dibujar mapa con aldeanos en paso actual
+        // Render map with villagers
         let output = "";
         for (let y = 0; y < map.length; y++) {
             for (let x = 0; x < map[y].length; x++) {
@@ -212,6 +240,7 @@ async function playVillagerPaths() {
 
         document.getElementById("map-area").textContent = output;
 
-        await new Promise(resolve => setTimeout(resolve, 300)); // esperar 300ms
+        await new Promise(resolve => setTimeout(resolve, 300)); // Wait 300ms
     }
 }
+

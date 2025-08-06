@@ -6,6 +6,7 @@
 #include "villager.h"
 #include "vrp.h"
 #include "status_report.h"
+#include "simulation.h"
 
 int total_gold = 0;
 int total_wood = 0;

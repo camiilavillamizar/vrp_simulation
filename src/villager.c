@@ -8,15 +8,6 @@ extern int total_gold;
 extern int total_wood;
 extern int total_food;
 
-int offsets[][2] = {
-        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
-        {0, 1}, {1, 0}, {0, -1}, {-1, 0},
-        {2, 0}, {0, 2}, {-2, 0}, {0, -2},
-        {2, 1}, {1, 2}, {-2, 1}, {-1, 2},
-        {2, -1}, {1, -2}, {-2, -1}, {-1, -2}
-         
-    };
-
 // Global villager array
 Villager villagers[MAX_VILLAGERS];
 int villager_count = 0;
@@ -46,6 +37,13 @@ int create_villager(int x, int y) {
 
 void initialize_villagers(int town_x, int town_y) {
     
+    static const int offsets[][2] = {
+        {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+        {0, 1}, {1, 0}, {0, -1}, {-1, 0},
+        {2, 0}, {0, 2}, {-2, 0}, {0, -2},
+        {2, 1}, {1, 2}, {-2, 1}, {-1, 2},
+        {2, -1}, {1, -2}, {-2, -1}, {-1, -2}
+    };
     int num_offsets = sizeof(offsets) / sizeof(offsets[0]);
     int created = 0;
 
