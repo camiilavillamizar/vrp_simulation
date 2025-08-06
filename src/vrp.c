@@ -11,7 +11,7 @@
 #include <omp.h>
 #include <mpi.h>
 
-#define FOLDER "output/ticks"
+#define FOLDER "output/logs"
 #define MAX_DROPOFF 100
 #define K_NEAREST 5
 
@@ -222,18 +222,23 @@ void run_strategy_simulation(
 ) {
     int tick = 0, finished = 0;
     int villager_x[NUMBER_OF_VILLAGERS], villager_y[NUMBER_OF_VILLAGERS];
+    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
+        villager_x[i] = villagers[i].x;
+        villager_y[i] = villagers[i].y;
+    }
+
     int dist_sum[NUMBER_OF_VILLAGERS] = {0};
     int total_wood_local = 0;
     int total_gold_local = 0;
     int total_food_local = 0;
     int total_collectionEffort_local = 0;
 
-    int drop_x, drop_y;
-    nearest_dropoff(game_map.width / 2, game_map.height / 2, &drop_x, &drop_y);
-    for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
-        villager_x[i] = drop_x;
-        villager_y[i] = drop_y;
-    }
+    // int drop_x, drop_y;
+    // nearest_dropoff(game_map.width / 2, game_map.height / 2, &drop_x, &drop_y);
+    // for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i) {
+    //     villager_x[i] = drop_x;
+    //     villager_y[i] = drop_y;
+    // }
 
     *total_collectionEffort = 0;
     *used_ticks = 0;
