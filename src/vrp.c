@@ -272,10 +272,16 @@ void run_strategy_simulation(
 
         save_tick_state(FOLDER, strategy_id, tick, villager_x, villager_y, tick_actions, action_counts);
         save_map_txt_with_villagers("output/ticks", strategy_id, tick, villager_x, villager_y);
+        // Calcular distancia total acumulada hasta este tick
+        long long dist_sum_tick = 0;
+        for (int i = 0; i < NUMBER_OF_VILLAGERS; ++i)
+            dist_sum_tick += dist_sum[i];
+
         save_tick_json_state("output/simulation", strategy_id, tick, villager_x, villager_y,
-                     total_wood_local, total_gold_local, total_food_local,
-                     total_distance, total_collectionEffort_local,
-                     tick_actions, action_counts);
+                    total_wood_local, total_gold_local, total_food_local,
+                    &dist_sum_tick,  // 👈 ahora sí está actualizado
+                    total_collectionEffort_local,
+                    tick_actions, action_counts);
 
         printf("[Tick %d] END → Wood: %d | Gold: %d | Food: %d\n",
             tick, total_wood_local, total_gold_local, total_food_local);
