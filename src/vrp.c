@@ -90,7 +90,8 @@ int villager_collect_knapsack(
     int tid, int *vx, int *vy, int *dist_sum, int selector,
     VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY],
     int action_counts[NUMBER_OF_VILLAGERS],
-    int* wood_collected, int* gold_collected, int* food_collected
+    int* wood_collected, int* gold_collected, int* food_collected,
+    int claimed[MAP_HEIGHT][MAP_WIDTH]  // 👈 nuevo parámetro
 ) {
     int left = VILLAGER_CAPACITY;
     int collectionEffort = 0;
@@ -101,16 +102,14 @@ int villager_collect_knapsack(
         double best_score = -1e9;
 
         if (selector == 2) {
-            // Estrategia 2: K Nearest + más cantidad
             const int K = 5;
             int kx[K], ky[K], kd[K], kn = 0;
 
             for (int y = 0; y < game_map.height; ++y) {
                 for (int x = 0; x < game_map.width; ++x) {
                     Resource *res = &game_map.resources[y][x];
-                    if (res->amount > 0 &&
+                    if (res->amount > 0 && !claimed[y][x] &&
                         (res->type == CELL_GOLD || res->type == CELL_WOOD || res->type == CELL_FOOD)) {
-
                         int d = manhattan(start_x, start_y, x, y);
                         if (kn < K) {
                             kx[kn] = x; ky[kn] = y; kd[kn] = d; kn++;
@@ -140,11 +139,10 @@ int villager_collect_knapsack(
             }
 
         } else {
-            // Estrategias 0 y 1
             for (int y = 0; y < game_map.height; ++y) {
                 for (int x = 0; x < game_map.width; ++x) {
                     Resource *res = &game_map.resources[y][x];
-                    if (res->amount > 0 &&
+                    if (res->amount > 0 && !claimed[y][x] &&
                         (res->type == CELL_GOLD || res->type == CELL_WOOD || res->type == CELL_FOOD)) {
 
                         int t_per = (res->type == CELL_GOLD) ? TICKS_PER_GOLD_UNIT :
@@ -169,6 +167,11 @@ int villager_collect_knapsack(
             }
         }
 
+        // 👇 Marcar recurso como reclamado para que otros aldeanos no lo elijan este tick
+        if (best_x != -1 && best_y != -1) {
+            claimed[best_y][best_x] = 1;
+        }
+
         if (best_x == -1 || take == 0) break;
 
         int drop_x, drop_y;
@@ -184,18 +187,12 @@ int villager_collect_knapsack(
             target->amount -= canreally;
 
             if (target->amount == 0) {
-                if(target->type == CELL_WOOD){
-
-                    game_map.cells[best_y][best_x] = CELL_WOOD_EMPTY; 
-
-                } else if (target->type == CELL_FOOD){
-                    game_map.cells[best_y][best_x] = CELL_FOOD_EMPTY; 
-
-                } else if (target->type == CELL_GOLD){
-                    game_map.cells[best_y][best_x] = CELL_GOLD_EMPTY; 
-
-                }
-                 
+                if (target->type == CELL_WOOD)
+                    game_map.cells[best_y][best_x] = CELL_WOOD_EMPTY;
+                else if (target->type == CELL_FOOD)
+                    game_map.cells[best_y][best_x] = CELL_FOOD_EMPTY;
+                else if (target->type == CELL_GOLD)
+                    game_map.cells[best_y][best_x] = CELL_GOLD_EMPTY;
             }
 
             collectionEffort += canreally * (
@@ -265,6 +262,8 @@ void run_strategy_simulation(
         VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
         int action_counts[NUMBER_OF_VILLAGERS] = {0};
 
+        int claimed[MAP_HEIGHT][MAP_WIDTH] = {{0}};  // Reset for this tick
+
         #pragma omp parallel for reduction(+:round_collectionEffort, total_wood_local, total_gold_local, total_food_local)
         for (int tid = 0; tid < NUMBER_OF_VILLAGERS; ++tid) {
             int wood = 0, gold = 0, food = 0;
@@ -272,7 +271,7 @@ void run_strategy_simulation(
             int t = villager_collect_knapsack(
                 tid, villager_x, villager_y, &dist_sum[tid], strategy_id,
                 tick_actions, action_counts,
-                &wood, &gold, &food
+                &wood, &gold, &food, claimed 
             );
 
             round_collectionEffort += t;
