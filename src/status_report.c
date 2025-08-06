@@ -88,6 +88,7 @@ void save_tick_json_state(
         json_object_object_add(v, "x", json_object_new_int(villager_x[i]));
         json_object_object_add(v, "y", json_object_new_int(villager_y[i]));
 
+        // Acciones
         json_object *actions_array = json_object_new_array();
         for (int j = 0; j < action_counts[i]; ++j) {
             VillagerAction act = tick_actions[i][j];
@@ -105,10 +106,37 @@ void save_tick_json_state(
 
             json_object_array_add(actions_array, json_object_new_string(desc));
         }
-
         json_object_object_add(v, "actions", actions_array);
+
+        // 👣 Path
+        json_object *path_array = json_object_new_array();
+
+        if (action_counts[i] > 0) {
+            VillagerAction first_act = tick_actions[i][0];
+            json_object *start = json_object_new_array();
+            json_object_array_add(start, json_object_new_int(first_act.x));
+            json_object_array_add(start, json_object_new_int(first_act.y));
+            json_object_array_add(path_array, start);
+        }
+
+        for (int j = 0; j < action_counts[i]; ++j) {
+            VillagerAction act = tick_actions[i][j];
+            json_object *res_coord = json_object_new_array();
+            json_object_array_add(res_coord, json_object_new_int(act.x));
+            json_object_array_add(res_coord, json_object_new_int(act.y));
+            json_object_array_add(path_array, res_coord);
+        }
+
+        json_object *end = json_object_new_array();
+        json_object_array_add(end, json_object_new_int(villager_x[i]));
+        json_object_array_add(end, json_object_new_int(villager_y[i]));
+        json_object_array_add(path_array, end);
+
+        json_object_object_add(v, "path", path_array);
+
         json_object_array_add(villagers_array, v);
     }
+
     json_object_object_add(root, "villagers", villagers_array);
 
     // Statistics
@@ -122,6 +150,7 @@ void save_tick_json_state(
     fclose(f);
     json_object_put(root);
 }
+
 
 // Recursively delete folder contents and the folder itself
 void delete_folder_recursive(const char *path) {
