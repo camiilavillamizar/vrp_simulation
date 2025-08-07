@@ -43,4 +43,6 @@ Open: http://localhost:8080/index.html
 
 
 ## Notes
-To change simulation values is it possible to modify the file include/game_rules.h, lines 42 to 55
+- To change simulation values is it possible to modify the file include/game_rules.h, lines 42 to 55
+- In case you want to work with the previous created map, you can comment the line 24 of simulation.c file, and uncomment the line 27
+- Currently, we can handle max 20 villagers

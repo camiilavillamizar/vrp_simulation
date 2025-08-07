@@ -21,10 +21,10 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         clear_output_folders();
 
-        //generate_random_map();
+        generate_random_map();
         
         // Uncomment this to load from a file instead of generating randomly
-        load_map_from_file("output/map/initial_map.txt");
+        //load_map_from_file("output/map/initial_map.txt");
 
         printf("[RANK %d] Map and villagers generated. Total: %d\n", rank, villager_count);
         
