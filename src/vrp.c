@@ -248,6 +248,25 @@ void run_strategy_simulation(
         // printf("[Tick %d] START → Wood: %d | Gold: %d | Food: %d\n",
         //     tick, total_wood_local, total_gold_local, total_food_local);
 
+        int any_available = 0;
+        for (int y = 0; y < game_map.height && !any_available; ++y) {
+            for (int x = 0; x < game_map.width; ++x) {
+                Resource *res = &game_map.resources[y][x];
+                if (res->amount > 0 &&
+                    ((res->type == CELL_WOOD && total_wood_local < GOAL_WOOD) ||
+                    (res->type == CELL_GOLD && total_gold_local < GOAL_GOLD) ||
+                    (res->type == CELL_FOOD && total_food_local < GOAL_FOOD))) {
+                    any_available = 1;
+                    break;
+                }
+            }
+        }
+
+        if (!any_available) {
+            printf("[Tick %d] No more useful resources. Ending simulation.\n", tick);
+            break;
+        }
+        
         int round_collectionEffort = 0;
         VillagerAction tick_actions[NUMBER_OF_VILLAGERS][VILLAGER_CAPACITY] = {{{0}}};
         int action_counts[NUMBER_OF_VILLAGERS] = {0};
