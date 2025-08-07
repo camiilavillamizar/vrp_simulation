@@ -20,5 +20,8 @@ clean:
 # === Run with MPI ===
 run: $(BIN)
 	mpirun --allow-run-as-root -np 4 ./$(BIN)
+	@echo "Simulation completed. Starting frontend server..."
+	python3 -m http.server 8080 &
+	@echo "Open your browser at: http://localhost:8080/index.html"
 
 
