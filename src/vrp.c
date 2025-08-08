@@ -139,28 +139,65 @@ int villager_collect_knapsack(
                         else if (selector == 1) score = (double)(can_take * t_per) / (d+1); // Max profit per distance
                         else if (selector == 2) {
                             // KNN: find among K nearest, take max capacity
-                            static int kx[K_NEAREST], ky[K_NEAREST], kd[K_NEAREST], kn = 0;
-                            kn = 0;
-                            for (int yy = 0; yy < game_map.height; ++yy) for (int xx = 0; xx < game_map.width; ++xx) {
-                                Resource *r = &game_map.resources[yy][xx];
-                                if (r->amount > 0 && (r->type == res->type)) {
-                                    int dd = manhattan(start_x, start_y, xx, yy);
-                                    if (kn < K_NEAREST) { kx[kn]=xx; ky[kn]=yy; kd[kn]=dd; kn++; }
-                                    else {
-                                        int max_idx = 0;
-                                        for (int j = 1; j < K_NEAREST; ++j) if (kd[j] > kd[max_idx]) max_idx = j;
-                                        if (dd < kd[max_idx]) { kx[max_idx]=xx; ky[max_idx]=yy; kd[max_idx]=dd; }
+                            int* kx = (int*)malloc(K_NEAREST * sizeof(int));
+                            int* ky = (int*)malloc(K_NEAREST * sizeof(int));
+                            int* kd = (int*)malloc(K_NEAREST * sizeof(int));
+                            int kn = 0;
+
+                            // printf("[Tick %d][Villager %d] Searching K Nearest Resources from (%d, %d) of type %d...\n",
+                            //     tick, tid, start_x, start_y, res->type);
+
+                            for (int yy = 0; yy < game_map.height; ++yy) {
+                                for (int xx = 0; xx < game_map.width; ++xx) {
+                                    Resource* r = &game_map.resources[yy][xx];
+                                    if (r->amount > 0 && r->type == res->type) {
+                                        int dd = manhattan(start_x, start_y, xx, yy);
+
+                                        if (kn < K_NEAREST) {
+                                            kx[kn] = xx;
+                                            ky[kn] = yy;
+                                            kd[kn] = dd;
+                                            // printf("  Added candidate (%d, %d) with amount %d, distance %d\n", xx, yy, r->amount, dd);
+                                            kn++;
+                                        } else {
+                                            int max_idx = 0;
+                                            for (int j = 1; j < K_NEAREST; ++j)
+                                                if (kd[j] > kd[max_idx]) max_idx = j;
+
+                                            if (dd < kd[max_idx]) {
+                                                // printf("  Replacing (%d, %d) with (%d, %d) — better distance %d < %d\n",
+                                                //     kx[max_idx], ky[max_idx], xx, yy, dd, kd[max_idx]);
+                                                kx[max_idx] = xx;
+                                                ky[max_idx] = yy;
+                                                kd[max_idx] = dd;
+                                            }
+                                        }
                                     }
                                 }
                             }
+
                             int max_cap = -1;
                             for (int j = 0; j < kn; ++j) {
-                                Resource *rr = &game_map.resources[ky[j]][kx[j]];
-                                if (rr->amount > max_cap) { max_cap = rr->amount; best_x = kx[j]; best_y = ky[j]; best_type = res->type; }
+                                Resource* rr = &game_map.resources[ky[j]][kx[j]];
+                                // printf("  Checking candidate (%d, %d) with amount %d\n", kx[j], ky[j], rr->amount);
+                                if (rr->amount > max_cap) {
+                                    max_cap = rr->amount;
+                                    best_x = kx[j];
+                                    best_y = ky[j];
+                                    best_type = res->type;
+                                }
                             }
-                            if (max_cap > 0) { take = (max_cap > left) ? left : max_cap; }
+
+                            if (max_cap > 0) {
+                                take = (max_cap > left) ? left : max_cap;
+                            }
+
+                            free(kx);
+                            free(ky);
+                            free(kd);
                             break;
                         }
+
                     
                         if (selector != 2 && score > best_score) {
                             best_score = score;
